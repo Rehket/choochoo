@@ -73,9 +73,7 @@ def pattern(regexp):
         if m:
             # log.debug(f'{regexp} parsed {string!r} as {m.groups()}')
             yield list(m.groups()), string[m.end():]
-        else:
-            # log.debug(f'{regexp} failed to parse {string!r}')
-            pass
+
     return _parser
 
 

@@ -67,8 +67,7 @@ class ActivityCalculator(LoaderMixin, OwnerInMixin, DataFrameCalculatorMixin,
                        'The total height climbed in the detected climbs (only).')
         # these are complicated :( because exact names are calculated elsewhere
         for statistic_name in s.query(StatisticName). \
-                filter(StatisticName.name.like('%' + N.FITNESS_ANY),
-                       StatisticName.owner == ResponseCalculator).all():
+                    filter(StatisticName.name.like(f'%{N.FITNESS_ANY}'), StatisticName.owner == ResponseCalculator).all():
             self._provides(s, T._delta(statistic_name.title), StatisticJournalType.FLOAT, U.FF, S.join(S.MAX, S.MSR),
                            'The change (over the activity) in the SHRIMP Fitness parameter.')
             days = int(DIGITS.search(statistic_name.name).group(1))
@@ -78,8 +77,7 @@ class ActivityCalculator(LoaderMixin, OwnerInMixin, DataFrameCalculatorMixin,
             self._provides(s, T.PLATEAU_D % days, StatisticJournalType.FLOAT, U.S, S.join(S.MAX, S.MSR),
                            'The maximum Fitness achieved if this activity was repeated (with the same time gap to the previous).')
         for statistic_name in s.query(StatisticName). \
-                filter(StatisticName.name.like('%' + N.FATIGUE_ANY),
-                       StatisticName.owner == ResponseCalculator).all():
+                    filter(StatisticName.name.like(f'%{N.FATIGUE_ANY}'), StatisticName.owner == ResponseCalculator).all():
             self._provides(s, T._delta(statistic_name.title), StatisticJournalType.FLOAT, U.FF, S.join(S.MAX, S.MSR),
                            'The change (over the activity) in the SHRIMP Fatigue parameter.')
             days = int(DIGITS.search(statistic_name.name).group(1))
@@ -121,7 +119,7 @@ class ActivityCalculator(LoaderMixin, OwnerInMixin, DataFrameCalculatorMixin,
     def _calculate_stats(self, s, ajournal, data):
         adf, sdf, climbs, delta = data
         stats = {}
-        stats.update(copy_times(ajournal))
+        stats |= copy_times(ajournal)
         stats.update(active_stats(adf))
         stats.update(self.__average_power(s, ajournal, stats[N.ACTIVE_TIME]))
         stats.update(times_for_distance(adf))
@@ -132,7 +130,7 @@ class ActivityCalculator(LoaderMixin, OwnerInMixin, DataFrameCalculatorMixin,
         if sdf is not None:
             stats.update(response_stats(sdf, delta))
         if climbs:
-            stats.update({N.TOTAL_CLIMB: self.__total_climbed(climbs)})
+            stats[N.TOTAL_CLIMB] = self.__total_climbed(climbs)
         return data, stats
 
     def __total_climbed(self, climbs):

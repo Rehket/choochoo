@@ -24,12 +24,10 @@ class Displayer(BasePipeline):
     @abstractmethod
     def _read_schedule(self, s, date, schedule):
         raise NotImplementedError(self.__class__.__name__)
-        yield
 
     @abstractmethod
     def _read_date(self, s, date):
         raise NotImplementedError(self.__class__.__name__)
-        yield
 
 
 class ActivityJournalDelegate(BasePipeline):
@@ -40,12 +38,10 @@ class ActivityJournalDelegate(BasePipeline):
     @abstractmethod
     def read_journal_date(self, s, ajournal, date):
         raise NotImplementedError(self.__class__.__name__)
-        yield
 
     @abstractmethod
     def read_interval(self, s, interval):
         raise NotImplementedError(self.__class__.__name__)
-        yield
 
 
 class JournalDiary(Displayer):
@@ -64,4 +60,3 @@ class JournalDiary(Displayer):
     @abstractmethod
     def _read_journal_date(self, s, ajournal, date):
         raise NotImplementedError(self.__class__)
-        yield

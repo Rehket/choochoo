@@ -69,10 +69,7 @@ def parse_slice(s):
 
 
 def parse_offset(offset):
-    if offset:
-        return int(offset)
-    else:
-        return None
+    return int(offset) if offset else None
 
 
 def format_slices(slices):
@@ -80,7 +77,7 @@ def format_slices(slices):
 
 
 def format_slice(slice):
-    return '%s:%s' % (format_offset(slice.start), format_offset(slice.stop))
+    return f'{format_offset(slice.start)}:{format_offset(slice.stop)}'
 
 
 def format_offset(offset):
@@ -88,7 +85,7 @@ def format_offset(offset):
 
 
 def log_data(title, data):
-    log.info('%s Data ----------' % title)
+    log.info(f'{title} Data ----------')
     log.info('Length: %d bytes' % len(data))
     try:
         header = FileHeader(data)
@@ -96,12 +93,12 @@ def log_data(title, data):
         log.info('Protocol version: %d' % header.protocol_version)
         log.info('Profile version: %d' % header.profile_version)
     except Exception as e:
-        log.info('Could not parse header: %s' % e)
+        log.info(f'Could not parse header: {e}')
     try:
         checksum = Checksum(data[-2:])
         log.info('Checksum: %d (0x%04x)' % (checksum.checksum, checksum.checksum))
     except Exception as e:
-        log.info('Could not parse checksum: %s' % e)
+        log.info(f'Could not parse checksum: {e}')
 
 
 def prepend_header(data, header_size, protocol_version, profile_version):
@@ -121,7 +118,7 @@ def prepend_header(data, header_size, protocol_version, profile_version):
 
 
 def log_param(name, value):
-    log.info('%s %s' % (mm(name), value))
+    log.info(f'{mm(name)} {value}')
 
 
 def set_default(name, value, deflt):
@@ -167,7 +164,7 @@ def process_header(data, header_size=None, protocol_version=None, profile_versio
         return data
     except Exception as e:
         log.error(e)
-        raise Exception('Error fixing header - maybe try %s' % mm(ADD_HEADER))
+        raise Exception(f'Error fixing header - maybe try {mm(ADD_HEADER)}')
 
 
 def process_checksum(data, state):
@@ -194,14 +191,13 @@ def process_checksum(data, state):
 def apply_slices(data, slices):
 
     log.info('Slice ----------')
-    log.info('Slices: %s' % format_slices(slices))
+    log.info(f'Slices: {format_slices(slices)}')
 
     result = bytearray()
     for slice in slices:
         result += data[slice]
     log.info('Have %d bytes after slicing' % len(result))
-    dropped = len(data) - len(result)
-    if dropped:
+    if dropped := len(data) - len(result):
         log.warning('Slicing decreased length by %d bytes' % dropped)
 
     return result
@@ -222,14 +218,17 @@ class StartState(State):
     def timestamp(self, timestamp):
         if self.__delta is None:
             self.__delta = self.__start - timestamp
-            log.warning('Shifting timestamps by %s' % format_seconds(self.__delta.total_seconds()))
+            log.warning(
+                f'Shifting timestamps by {format_seconds(self.__delta.total_seconds())}'
+            )
+
         self._timestamp = self._validate_timestamp(timestamp + self.__delta)
 
 
 def set_start(data, types, messages, start):
 
     log.info('Start ----------')
-    log.info('Start: %s' % format_time(start))
+    log.info(f'Start: {format_time(start)}')
 
     state = StartState(types, messages, start)
     with memoryview(data) as view:
@@ -247,7 +246,7 @@ def validate_data(data, state, warn=False, force=True):
     log.info('Validation ----------')
     log_param(MAX_DELTA_T, state.max_delta_t)
     if state.max_delta_t is None:
-        log.warning('Time-reversal is allowed unless %s is set' % MAX_DELTA_T)
+        log.warning(f'Time-reversal is allowed unless {MAX_DELTA_T} is set')
 
     first_t = True
     try:
@@ -257,13 +256,13 @@ def validate_data(data, state, warn=False, force=True):
         while len(data) - offset > 2:
             token = token_factory(data[offset:], state)
             if first_t and state.timestamp:
-                log.info('First timestamp: %s' % state.timestamp)
+                log.info(f'First timestamp: {state.timestamp}')
                 first_t = False
             record = token.parse_token(warn=warn)
             if force:
                 record.force()
             offset += len(token)
-        log.info('Last timestamp:  %s' % state.timestamp)
+        log.info(f'Last timestamp:  {state.timestamp}')
         if state.timestamp > dt.datetime.now(tz=pytz.UTC):
             log.warning('Timestamp in future')
         checksum = Checksum(data[offset:])
@@ -290,7 +289,7 @@ def drop_data(initial_state, data, warn=False, force=True,
                          drop_count=0, initial_offset=0, warn=warn, force=force,
                          min_sync_cnt=min_sync_cnt, max_record_len=max_record_len, max_drop_cnt=max_drop_cnt,
                          max_back_cnt=max_back_cnt, max_fwd_len=max_fwd_len)
-    log.info('Found slices %s' % format_slices(slices))
+    log.info(f'Found slices {format_slices(slices)}')
     return slices
 
 

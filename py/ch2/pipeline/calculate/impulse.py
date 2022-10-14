@@ -29,7 +29,7 @@ class ImpulseCalculator(LoaderMixin, OwnerInMixin, DataFrameCalculatorMixin,
         super()._startup(s)
         self.impulse_constant = Constant.from_name(s, self.impulse_constant_ref)
         self.impulse = HRImpulse(**loads(self.impulse_constant.at(s).value))
-        log.debug('%s: %s' % (self.impulse_constant, self.impulse))
+        log.debug(f'{self.impulse_constant}: {self.impulse}')
         self._provides(s, T.HR_ZONE, StatisticJournalType.FLOAT, None, None,
                        'The SHRIMP HR zone.')
         name_group = self.prefix + SPACE + self.impulse_constant.short_name
@@ -39,7 +39,7 @@ class ImpulseCalculator(LoaderMixin, OwnerInMixin, DataFrameCalculatorMixin,
     def _read_dataframe(self, s, ajournal):
         try:
             heart_rate_df = Statistics(s, activity_journal=ajournal). \
-                by_name(self.owner_in, N.HEART_RATE).df
+                    by_name(self.owner_in, N.HEART_RATE).df
             fthr_df = Statistics(s).by_name(Constant, N.FTHR).df
         except Exception as e:
             log.warning(f'Failed to generate statistics for activity: {e}')
@@ -52,9 +52,7 @@ class ImpulseCalculator(LoaderMixin, OwnerInMixin, DataFrameCalculatorMixin,
         heart_rate_df, fthr_df = data
         hr_zone(heart_rate_df, fthr_df)
         impulse_df = impulse_10(heart_rate_df, self.impulse)
-        # join so that we can iterate over values in time order
-        stats = impulse_df.join(heart_rate_df, how='outer')
-        return stats
+        return impulse_df.join(heart_rate_df, how='outer')
 
     def _copy_results(self, s, ajournal, loader, stats):
         name_group = self.prefix + SPACE + self.impulse_constant.short_name  # drop activity group as present elsewhere

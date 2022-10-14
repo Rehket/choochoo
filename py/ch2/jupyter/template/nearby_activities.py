@@ -13,9 +13,10 @@ from ch2.sql import *
 @template
 def nearby_activities():
 
-    f'''
+    '''
     # Nearby Activities
     '''
+
 
     '''
     $contents

@@ -43,8 +43,7 @@ Import everything but diary entries.
     else:
         source = config.args[SOURCE]
         if not source:
-            local = list(available_versions(config))
-            if local:
+            if local := list(available_versions(config)):
                 source = local[0]
             else:
                 raise Exception('No versions found locally')
@@ -54,7 +53,10 @@ Import everything but diary entries.
 
 def import_source(config, record, source, flags=None):
     if config.db.no_schema():
-        raise Exception(f'Cannot import into a database with no schema (add profile first)')
+        raise Exception(
+            'Cannot import into a database with no schema (add profile first)'
+        )
+
     # engine needed if source is not a URI
     with record.record_exceptions():
         uri = infer_uri(config, source)

@@ -80,7 +80,7 @@ select s.sector_id,
     result = s.connection().execute(sql, sector_group_id=sector_group.id, activity_journal_id=ajournal.id,
                                     sector_id=sector_id)
     for row in result.fetchall():
-        data = {name: value for name, value in zip(result.keys(), row)}
+        data = dict(zip(result.keys(), row))
         log.debug(f'Adding SectorJournal for activity_journal_id {ajournal.id}, '
                   f'activity_group {ajournal.activity_group}: {data}')
         sjournal = add(s, SectorJournal(activity_journal_id=ajournal.id, activity_group=ajournal.activity_group,

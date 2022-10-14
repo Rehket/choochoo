@@ -35,15 +35,18 @@ def read_internal_profile():
             log.warning('There was a problem reading the pickled profile.')
             log.warning('If you installed via pip then please create an issue at')
             log.warning('https://github.com/andrewcooke/choochoo for support.')
-            log.warning('If you installed via git please see `ch2 help %s`' % PACKAGE_FIT_PROFILE)
-            raise Exception('Could not read %s (see log for more details)' % PROFILE_NAME)
+            log.warning(
+                f'If you installed via git please see `ch2 help {PACKAGE_FIT_PROFILE}`'
+            )
+
+            raise Exception(f'Could not read {PROFILE_NAME} (see log for more details)')
         PROFILE[0][0].set_log(log)
     return PROFILE[0][1:]
 
 
 def read_profile(warn=False, profile_path=None):
     if profile_path:
-        log.debug('Reading profile from %s' % profile_path)
+        log.debug(f'Reading profile from {profile_path}')
         _nlog, types, messages = read_external_profile(profile_path, warn=warn)
     else:
         types, messages = read_internal_profile()
@@ -52,17 +55,17 @@ def read_profile(warn=False, profile_path=None):
 
 
 def read_fit(fit_path):
-    log.debug('Reading fit file from %s' % fit_path)
+    log.debug(f'Reading fit file from {fit_path}')
     with open(fit_path, 'rb') as input:
         return input.read()
 
 
 def pickle_profile(in_path, warn=False):
-    log.info('Reading from %s' % in_path)
+    log.info(f'Reading from {in_path}')
     nlog, types, messages = read_external_profile(in_path, warn=warn)
     out_path = join(dirname(__file__), PROFILE_NAME)
     nlog.set_log(None)
-    log.info('Writing to %s' % out_path)
+    log.info(f'Writing to {out_path}')
     with open(out_path, 'wb') as output:
         dump((nlog, types, messages), output)
     # test loading

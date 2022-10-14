@@ -20,10 +20,13 @@ def import_constant(record, old, new):
 def constant_imported(record, new):
     with new.session_context() as new_s:
         # imported if NO undefined constants (more lenient than other imports)
-        return not bool(new_s.query(Constant).
-                        join(StatisticName).
-                        outerjoin(StatisticJournal).
-                        filter(StatisticJournal.id == None).count())
+        return not bool(
+            new_s.query(Constant)
+            .join(StatisticName)
+            .outerjoin(StatisticJournal)
+            .filter(StatisticJournal.id is None)
+            .count()
+        )
 
 
 def list_missing_constants(record, new):
@@ -31,7 +34,7 @@ def list_missing_constants(record, new):
         for new_constant in new_s.query(Constant). \
                 join(StatisticName). \
                 outerjoin(StatisticJournal). \
-                filter(StatisticJournal.id == None).all():
+                filter(StatisticJournal.id is None).all():
             record.warning(f'Constant {new_constant.name} still missing value(s)')
 
 
@@ -62,11 +65,14 @@ def copy_constants(record, old_s, old, new):
 
 
 def copy_constant(record, old_s, old, old_constant, old_statistic_name, new_s, new_constant):
-    missing = bool(new_s.query(Constant).
-                   join(StatisticName).
-                   outerjoin(StatisticJournal).
-                   filter(Constant.id == new_constant.id,
-                          StatisticJournal.id == None).count())
+    missing = bool(
+        new_s.query(Constant)
+        .join(StatisticName)
+        .outerjoin(StatisticJournal)
+        .filter(Constant.id == new_constant.id, StatisticJournal.id is None)
+        .count()
+    )
+
     if missing:
         statistic_journal = old.meta.tables['statistic_journal']
         for old_statistic_journal in old_s.query(statistic_journal). \

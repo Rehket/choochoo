@@ -27,12 +27,10 @@ def count_statistics(s):
 
 def run_pipeline(config, type, like=tuple(), worker=None, **extra_kargs):
     with config.db.session_context() as s:
-        if not worker:
-            if type == PipelineType.PROCESS:
-                Interval.clean(s)
+        if not worker and type == PipelineType.PROCESS:
+            Interval.clean(s)
         for pipeline in Pipeline.all(s, type, like=like, id=worker):
-            kargs = dict(pipeline.kargs)
-            kargs.update(extra_kargs)
+            kargs = dict(pipeline.kargs) | extra_kargs
             msg = f'Ran {short_cls(pipeline.cls)}'
             if 'activity_group' in kargs: msg += f' ({kargs["activity_group"]})'
             log.debug(f'Running {pipeline}({kargs})')
@@ -132,11 +130,11 @@ class ProcessPipeline(BasePipeline):
         from .process import fmt_cmd
         cprofile = ''
         if self.cprofile:
-            cprofile = ' ' + mm(CPROFILE)
+            cprofile = f' {mm(CPROFILE)}'
             if self.cprofile[0]:
-                cprofile = ' ' + self.cprofile[0]
-        cmd = self.__ch2 + f'{cprofile} {mm(LOG)} {log_name} {mm(URI)} {self._config.args._format(URI)} ' \
-                           f'{PROCESS} {mm(WORKER)} {pipeline.id} {" ".join(missing)}'
+                cprofile = f' {self.cprofile[0]}'
+        cmd = f'{self.__ch2}{cprofile} {mm(LOG)} {log_name} {mm(URI)} {self._config.args._format(URI)} {PROCESS} {mm(WORKER)} {pipeline.id} {" ".join(missing)}'
+
         log.debug(fmt_cmd(cmd))
         return cmd
 

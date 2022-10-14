@@ -18,9 +18,14 @@ class ResponseDisplayer(OwnerInMixin, Displayer):
         super().__init__(*args, **kargs)
 
     def __statistic_names(self, s):
-        return s.query(StatisticName). \
-            filter(StatisticName.owner == self.owner_in,
-                   StatisticName.name.like(self.prefix + '%')).all()
+        return (
+            s.query(StatisticName)
+            .filter(
+                StatisticName.owner == self.owner_in,
+                StatisticName.name.like(f'{self.prefix}%'),
+            )
+            .all()
+        )
 
     def _read_date(self, s, date):
         yield from self._read_schedule(s, date, Schedule('d'))

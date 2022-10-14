@@ -19,7 +19,7 @@ def with_log(msg):
         log.info(msg.replace('ing ', 'ed '))
     except:
         log_current_exception(exception_level=INFO, first=True)
-        msg = 'Error ' + msg[0].lower() + msg[1:]
+        msg = f'Error {msg[0].lower()}{msg[1:]}'
         raise Exception(msg)
 
 
@@ -65,7 +65,7 @@ def execute(cnxn, stmt, **kargs):
 def remove(cnxn, part, name, extra='', extended=False):
     name = assert_name(name, extended=extended)
     with with_log(f'Removing {part} {name}'):
-        stmt = f'drop {part} {quote(cnxn, name)}' + extra
+        stmt = f'drop {part} {quote(cnxn, name)}{extra}'
         execute(cnxn, stmt)
 
 
@@ -86,7 +86,7 @@ def test_schema(cnxn, schema):
 def backup_schema(config):
     user = config.args[USER]
     assert_name(user)
-    previous = user + ':' + PREVIOUS
+    previous = f'{user}:{PREVIOUS}'
     cnxn = get_cnxn(config)
     if test_schema(cnxn, previous):
         remove(cnxn, 'schema', previous, ' cascade', extended=True)

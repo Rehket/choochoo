@@ -19,7 +19,7 @@ from ..common.args import mm
 log = getLogger(__name__)
 
 QUOTES = "'''"
-FQUOTES = 'f' + QUOTES
+FQUOTES = f'f{QUOTES}'
 IPYNB = '.ipynb'
 
 
@@ -94,7 +94,7 @@ class Text(TextToken):
 
     def post_one(self):
         # add back the surrounding quotes (or f-quotes) and do any substitution required
-        self._text = eval('%s%s%s' % (self._fmt, self._text, QUOTES), self._vars)
+        self._text = eval(f'{self._fmt}{self._text}{QUOTES}', self._vars)
         self._text = '\n'.join([self._strip_right(line) for line in self._text.splitlines()])
         self._text = self._strip(self._text)
 
@@ -145,8 +145,7 @@ class Code(TextToken):
     def _fix_session(self):
         # find the session and inject --base
         r_session = compile(r'((?:^|^.*\s)session\s*\()([^)]*)(\).*$)', DOTALL)
-        m_session = r_session.match(self._text)
-        if m_session:
+        if m_session := r_session.match(self._text):
             args = m_session.group(2).strip()
             args = self._fix_session_var(args, BASE)
             args = self._fix_session_var(args, URI)
@@ -154,13 +153,12 @@ class Code(TextToken):
 
     def _fix_session_var(self, args, name):
         rx = compile(r'(^|\s)--' + name + r'\s*(\S+)')
-        match = rx.search(args)
-        if match:
+        if match := rx.search(args):
             log.warning(f'Template session() includes {name}: {match.group(1)}')
         elif name not in self._vars:
             raise Exception(f'No {name} available')
         elif args:
-            args = args[:-1] + f' {mm(name)} {self._vars[name]}' + args[-1]
+            args = f'{args[:-1]} {mm(name)} {self._vars[name]}{args[-1]}'
         else:
             args = f' {mm(name)} {self._vars[name]}'
         return args
@@ -292,7 +290,7 @@ def create_notebook(config, template, args):
     template = template.__name__
     notebook_dir = config.args._format_path(NOTEBOOK_DIR)
     root = join(notebook_dir, template)
-    all_args = all_args if all_args else template
+    all_args = all_args or template
     name = all_args + IPYNB
     path = join(root, name)
     makedirs(root, exist_ok=True)

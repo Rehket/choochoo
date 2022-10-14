@@ -51,16 +51,16 @@ Will prepend a new 14 byte header, drop the old 14 byte header, and fix the head
     if check:
         name = NAME_GOOD if args[NAME] else NAME_BAD
         if args[ADD_HEADER] or args[DROP] or args[SLICES] or args[START] or args[FIX_HEADER] or args[FIX_CHECKSUM]:
-            raise Exception('Cannot check (%s) and modify at the same time' % mm(name))
+            raise Exception(f'Cannot check ({mm(name)}) and modify at the same time')
         if not args[VALIDATE]:
-            raise Exception('%s and %s makes no sense, numpty' % (mm(name), no(VALIDATE)))
+            raise Exception(f'{mm(name)} and {no(VALIDATE)} makes no sense, numpty')
     if not args[FORCE]:
-        log.warning('%s means that data are not completely parsed' % no(FORCE))
+        log.warning(f'{no(FORCE)} means that data are not completely parsed')
 
     for path in args[PATH]:
 
         log.info('Input ----------')
-        log.info('Reading binary data from %s' % path)
+        log.info(f'Reading binary data from {path}')
         data = read_fit(path)
         log.debug('Read %d bytes' % len(data))
 
@@ -74,11 +74,10 @@ Will prepend a new 14 byte header, drop the old 14 byte header, and fix the head
                        max_record_len=args[MAX_RECORD_LEN], max_drop_cnt=args[MAX_DROP_CNT],
                        max_back_cnt=args[MAX_BACK_CNT], max_fwd_len=args[MAX_FWD_LEN], max_delta_t=args[MAX_DELTA_T])
         except:
-            if check:
-                if not args[NAME]:
-                    print(path)
-            else:
+            if not check:
                 raise
+            if not args[NAME]:
+                print(path)
         else:
             if check and args[NAME]:
                 print(path)
@@ -92,9 +91,8 @@ Will prepend a new 14 byte header, drop the old 14 byte header, and fix the head
             if args[DISCARD]:
                 log.info('Discarded output')
             else:
-                out_path = args[OUTPUT]
-                if out_path:
-                    log.info('Writing binary data to %s' % out_path)
+                if out_path := args[OUTPUT]:
+                    log.info(f'Writing binary data to {out_path}')
                     with open(out_path, 'wb') as out:
                         out.write(data)
                 elif args[RAW]:

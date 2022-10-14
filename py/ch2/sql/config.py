@@ -19,8 +19,7 @@ class Config(BaseConfig):
 
     def get_constant(self, name, none=False):
         with self.db.session_context() as s:
-            value = SystemConstant.from_name(s, name, none=none)
-            return value
+            return SystemConstant.from_name(s, name, none=none)
 
     def set_constant(self, name, value, force=False):
         log.debug(f'Setting {name}={value}')
@@ -65,6 +64,5 @@ class Config(BaseConfig):
         except Exception as e:
             if value is UNDEF:
                 raise
-            else:
-                log.warning(f'Error (probably missing database): {first_line(e)}')
-                return value
+            log.warning(f'Error (probably missing database): {first_line(e)}')
+            return value

@@ -78,7 +78,7 @@ class AchievementCalculator(OwnerInMixin, ActivityJournalProcessCalculator):
         order = asc if less_is_better else desc
         journal_class = STATISTIC_JOURNAL_CLASSES[statistic_name.statistic_journal_type]
         q = s.query(journal_class.value).join(Source). \
-            filter(StatisticJournal.statistic_name == statistic_name,
+                filter(StatisticJournal.statistic_name == statistic_name,
                    Source.activity_group == activity_group,
                    StatisticJournal.time >= activity_journal.start - dt.timedelta(days=days),
                    StatisticJournal.time < activity_journal.finish)

@@ -29,8 +29,7 @@ def copy_sector_group(record, old_s, old, new_s):
     groups = {}
     sector_group = old.meta.tables['sector_group']
     for old_sector_group in old_s.query(sector_group).all():
-        new_sector_group = match_sector_group(new_s, old_sector_group)
-        if new_sector_group:
+        if new_sector_group := match_sector_group(new_s, old_sector_group):
             groups[new_sector_group.title] = new_sector_group
         else:
             groups[new_sector_group.title] = \

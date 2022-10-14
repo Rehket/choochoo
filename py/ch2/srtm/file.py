@@ -34,7 +34,7 @@ def cached_file_reader(dir, flat, flon):
     # The tiles are distributed as zip files containing HGT files labeled with the coordinate of the southwest cell.
     # For example, the file N20E100.hgt contains data from 20°N to 21°N and from 100°E to 101°E inclusive.
     root = '%s%02d%s%03d' % ('S' if flat < 0 else 'N', abs(flat), 'W' if flon < 0 else 'E', abs(flon))
-    hgt_file = root + '.hgt'
+    hgt_file = f'{root}.hgt'
     hgt_path = join(dir, hgt_file)
     zip_path = join(dir, root + EXTN)
     if exists(hgt_path):

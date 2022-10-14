@@ -60,20 +60,23 @@ def bookmarks(s, constraint, owner=CoastingBookmark):
 
 
 def present(df, *names, pattern=False):
-    if pattern:
-        if hasattr(df, 'columns'):
-            for name in names:
-                columns = like(name, df.columns)
-                if not columns or not all(len(df[column].dropna()) for column in columns):
-                    return False
-            return True
-        else:
-            return df is not None and (len(df.dropna()) and all(like(name, [df.name]) for name in names))
-    else:
-        if hasattr(df, 'columns'):
-            return all(name in df.columns and len(df[name].dropna()) for name in names)
-        else:
-            return df is not None and (len(df.dropna()) and all(df.name == name for name in names))
+    if not pattern:
+        return (
+            all(
+                name in df.columns and len(df[name].dropna()) for name in names
+            )
+            if hasattr(df, 'columns')
+            else df is not None
+            and (len(df.dropna()) and all(df.name == name for name in names))
+        )
+
+    if not hasattr(df, 'columns'):
+        return df is not None and (len(df.dropna()) and all(like(name, [df.name]) for name in names))
+    for name in names:
+        columns = like(name, df.columns)
+        if not columns or not all(len(df[column].dropna()) for column in columns):
+            return False
+    return True
 
 
 def median_d(df):
@@ -137,8 +140,8 @@ def groups_by_time(s, start=None, finish=None):
 def related_statistics(df, statistic, unpack=r'({statistic})\s*:\s*([^:]+)'):
     rx = compile(unpack.format(statistic=statistic))
     for column in df.columns:
-        m = rx.match(column)
-        if m: yield m.group(1), m.group(2)
+        if m := rx.match(column):
+            yield m.group(1), m.group(2)
 
 
 def transform(df, transformation):

@@ -48,23 +48,22 @@ class ElevationCalculator(LoaderMixin, DataFrameCalculatorMixin, ActivityJournal
 
     def _calculate_stats(self, s, ajournal, data):
         df, device = data
-        if not present(df, N.ELEVATION):
-            if device and device.value == 'Edge_130' and present(df, N.ALTITUDE):
-                log.info(f'Using {N.ALTITUDE} directly (barometer)')
-                df[N.ELEVATION] = df[N.ALTITUDE]
-                if present(df, N.SRTM1_ELEVATION): self.__improve(df)
-                add_gradient(df)
-            elif present(df, N.SRTM1_ELEVATION):
-                df = smooth_elevation(df, smooth=self.smooth)
-                # not used and may be nulls, breaking geo
-                df.drop(columns=[N.ALTITUDE], errors='ignore', inplace=True)
-            elif present(df, N.ALTITUDE):
-                log.warning(f'Using {N.ALTITUDE} as {N.ELEVATION}')
-                df[N.ELEVATION] = df[N.ALTITUDE]
-                add_gradient(df)
-            return add_delta_azimuth(df)
-        else:
+        if present(df, N.ELEVATION):
             return None
+        if device and device.value == 'Edge_130' and present(df, N.ALTITUDE):
+            log.info(f'Using {N.ALTITUDE} directly (barometer)')
+            df[N.ELEVATION] = df[N.ALTITUDE]
+            if present(df, N.SRTM1_ELEVATION): self.__improve(df)
+            add_gradient(df)
+        elif present(df, N.SRTM1_ELEVATION):
+            df = smooth_elevation(df, smooth=self.smooth)
+            # not used and may be nulls, breaking geo
+            df.drop(columns=[N.ALTITUDE], errors='ignore', inplace=True)
+        elif present(df, N.ALTITUDE):
+            log.warning(f'Using {N.ALTITUDE} as {N.ELEVATION}')
+            df[N.ELEVATION] = df[N.ALTITUDE]
+            add_gradient(df)
+        return add_delta_azimuth(df)
 
     def __improve(self, df):
         correction = df[N.SRTM1_ELEVATION].median() - df[N.ALTITUDE].median()
@@ -73,7 +72,7 @@ class ElevationCalculator(LoaderMixin, DataFrameCalculatorMixin, ActivityJournal
         sd = sqrt((df[N.ELEVATION] - df[N.SRTM1_ELEVATION]).var())
         if sd > 10:
             log.warning(f'Large difference between measured altitude and SRTM1 data ({sd:.1f}m)')
-            log.warning(f'Replacing measured altitude with SRTM1 data')
+            log.warning('Replacing measured altitude with SRTM1 data')
             df[N.ELEVATION] = df[N.SRTM1_ELEVATION]
         else:
             log.info(f'SD of difference between corrected altitude and SRTM1 is {sd:.1f}m')

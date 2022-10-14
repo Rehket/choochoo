@@ -119,18 +119,15 @@ def biggest_reversal(df):
 
 
 def biggest_climb(df, params=Climb(), grid=10):
-    # returns (score, dlo, dhi))
-    # use distances (indices) rather than ilocs because we're subdividing the data
-    if len(df) > 100 * grid:
-        score, lo, hi = search(df.iloc[::grid].copy(), grid=True)
-        if score:
-            # need to pass through iloc to extend range
-            ilo, ihi = get_index_loc(df, lo), get_index_loc(df, hi)
-            return search(df.iloc[max(0, ilo-grid):min(ihi+grid, len(df)-1)].copy(), params=params)
-        else:
-            return 0, None, None
-    else:
+    if len(df) <= 100 * grid:
         return search(df, params=params)
+    score, lo, hi = search(df.iloc[::grid].copy(), grid=True)
+    if score:
+        # need to pass through iloc to extend range
+        ilo, ihi = get_index_loc(df, lo), get_index_loc(df, hi)
+        return search(df.iloc[max(0, ilo-grid):min(ihi+grid, len(df)-1)].copy(), params=params)
+    else:
+        return 0, None, None
 
 
 def search(df, params=Climb(), grid=False):

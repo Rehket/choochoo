@@ -18,12 +18,11 @@ class CsrfCheck:
         request = Request(environ)
         if request.method == 'GET':
             log.debug('No CSRF check for GET')
+        elif 'CsrfCheck' in request.headers:
+            log.debug('Found CsrfCheck')
         else:
-            if 'CsrfCheck' in request.headers:
-                log.debug('Found CsrfCheck')
-            else:
-                log.error(f'No CsrfCheck header for {request.method}')
-                raise BadRequest()
+            log.error(f'No CsrfCheck header for {request.method}')
+            raise BadRequest()
         return self.app(environ, start_response)
 
 

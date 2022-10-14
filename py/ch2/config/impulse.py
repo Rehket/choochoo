@@ -37,7 +37,7 @@ def add_impulse(s, activity_group, gamma=2, zero=1, one=6, max_secs=60,
     if isinstance(activity_group, ActivityGroup):
         activity_group = activity_group.name
     if not activity_group:
-        raise Exception(f'Impulse must be defined for a specific group')
+        raise Exception('Impulse must be defined for a specific group')
     constant = add_enum_constant(s, title, HRImpulse,
                                  {'title': title, 'gamma': gamma, 'zero': zero, 'one': one, 'max_secs': max_secs},
                                  single=True, activity_group=activity_group, description='''

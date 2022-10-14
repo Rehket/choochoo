@@ -28,4 +28,3 @@ select st_envelope(st_transform(aj.route_et::geometry, {SPHM_SRID}))
     def read_interval(self, s, interval):
         # todo?
         return
-        yield

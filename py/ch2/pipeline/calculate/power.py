@@ -27,10 +27,11 @@ class PowerModel(reftuple('Power', 'bike_model, rider_weight')):
     def expand(self, s, time, default_owner=None, default_activity_group=None):
         instance = super().expand(s, time, default_owner=default_owner, default_activity_group=default_activity_group)
         bike_model = instance.bike_model
-        if not isinstance(bike_model, BikeModel):
-            return instance._replace(bike_model=BikeModel(**bike_model))
-        else:
-            return instance
+        return (
+            instance
+            if isinstance(bike_model, BikeModel)
+            else instance._replace(bike_model=BikeModel(**bike_model))
+        )
 
 
 class PowerCalculator(LoaderMixin, DataFrameCalculatorMixin, ActivityGroupProcessCalculator):

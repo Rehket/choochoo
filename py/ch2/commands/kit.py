@@ -251,10 +251,7 @@ def to_stats(model):
 def to_stats_csv(model):
     if TYPE in model:
         label = f'{q(model[TYPE])},{q(model[NAME])}'
-        if STATISTICS in model:
-            return label, model[STATISTICS]
-        else:
-            return label, None
+        return (label, model[STATISTICS]) if STATISTICS in model else (label, None)
     elif VALUE not in model:
         return f'{q(model[NAME])}', stats_children(model)
     else:
@@ -263,10 +260,7 @@ def to_stats_csv(model):
 
 def q(name):
     name = str(name)
-    if ' ' in name:
-        return f"'{name}'"
-    else:
-        return name
+    return f"'{name}'" if ' ' in name else name
 
 
 def qd(time):

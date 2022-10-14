@@ -42,10 +42,12 @@ once we have local clusters, find 'typical' routes and then group by those?
 
 
 def hulls_from_last_activity(s, radius_km):
-    activity_journal = s.query(ActivityJournal). \
-        filter(ActivityJournal.centre != None). \
-        order_by(desc(ActivityJournal.start)).first()
-    if activity_journal:
+    if (
+        activity_journal := s.query(ActivityJournal)
+        .filter(ActivityJournal.centre != None)
+        .order_by(desc(ActivityJournal.start))
+        .first()
+    ):
         return hulls_from_activity(s, activity_journal, radius_km)
     else:
         log.warning('No activities, so no clusters (no sector group)')
@@ -80,8 +82,7 @@ def hulls_from_point(s, centre, radius_km, title, parameters=Parameters()):
 
 def delete_hulls(s, sector_group):
     query = s.query(ClusterHull).filter(ClusterHull.sector_group_id == sector_group.id)
-    n = query.count()
-    if n:
+    if n := query.count():
         log.warning(f'Deleting {n} hulls for {sector_group.title}')
         query.delete(synchronize_session=False)
 
@@ -208,10 +209,7 @@ def sectors_from_hulls(s, sector_group):
     delete_sectors(s, sector_group)
     identify_sectors(s, sector_group)
     for id in s.query(Sector.id). \
-            filter(Sector.sector_group_id == sector_group.id,
-                   Sector.start == None,
-                   Sector.finish == None,
-                   Sector.owner == short_cls(ClusterCalculator)).all():
+            filter(Sector.sector_group_id == sector_group.id, Sector.start is None, Sector.finish is None, Sector.owner == short_cls(ClusterCalculator)).all():
         add_start_finish(s, id[0])
     delete_tmp_fragments(s, sector_group)
     log.info(f'Finished finding sectors for clusters for {sector_group.title}')
@@ -278,8 +276,7 @@ def delete_sectors(s, sector_group):
     query = s.query(Sector). \
         filter(Sector.sector_group_id == sector_group.id,
                Sector.owner == short_cls(ClusterCalculator))
-    n = query.count()
-    if n:
+    if n := query.count():
         log.warning(f'Deleting {n} sectors for clusters in {sector_group.title}')
         query.delete(synchronize_session=False)
 

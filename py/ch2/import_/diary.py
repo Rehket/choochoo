@@ -17,7 +17,7 @@ def import_diary(record, old, new):
         log.debug(f'Trying to copy diary topic data from {old} to {new}')
         with old.session_context() as old_s:
             diary_topic = old.meta.tables['diary_topic']
-            for old_diary_topic in old_s.query(diary_topic).filter(diary_topic.c.parent_id == None).all():
+            for old_diary_topic in old_s.query(diary_topic).filter(diary_topic.c.parent_id is None).all():
                 log.info(f'Found old (root) diary_topic {old_diary_topic}')
                 copy_diary_topic_fields(record, old_s, old, old_diary_topic, new)
     else:

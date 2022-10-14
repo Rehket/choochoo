@@ -227,10 +227,7 @@ def base_system_path(base, subdir=None, file=None, version=DB_VERSION, create=Tr
     if subdir: dir = join(dir, subdir)
     dir = clean_path(dir)
     if create and not exists(dir): makedirs(dir)
-    if file:
-        return join(dir, file)
-    else:
-        return dir
+    return join(dir, file) if file else dir
 
 
 def make_parser(with_noop=False):
@@ -616,7 +613,7 @@ def bootstrap_db(user, *args, configurator=None, post_config=None):
     if configurator:
         data = Config(ns)
         configurator(data)
-    args += post_config if post_config else []
+    args += post_config or []
     ns = NamespaceWithVariables._from_ns(parser.parse_args(args=args), PROGNAME, DB_VERSION)
     data = Config(ns)
     return data
@@ -638,17 +635,14 @@ def parse_pairs(pairs, convert=True, multi=False, comma=False):
                         break
                     except ValueError:
                         pass
-            if multi:
+            if not multi and comma and name in d:
+                d[name] = f'{d[name]},{value}'
+            elif not multi and comma or not multi:
+                d[name] = value
+            else:
                 if name not in d:
                     d[name] = []
                 d[name].append(value)
-            elif comma:
-                if name in d:
-                    d[name] = d[name] + ',' + value
-                else:
-                    d[name] = value
-            else:
-                d[name] = value
     return d
 
 

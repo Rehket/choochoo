@@ -39,20 +39,23 @@ class Constant(Source):
     def validate(self, s, sjournal):
         if self.validate_cls:
             if self.validate_args is None or self.validate_kargs is None:
-                raise Exception('Missing args or kargs for %s' % self)
+                raise Exception(f'Missing args or kargs for {self}')
             validate = self.validate_cls(*self.validate_args, **self.validate_kargs)
             validate.validate(s, self, sjournal)
 
     def add_value(self, s, value, time=None, date=None):
         from ..utils import add
         if time and date:
-            raise Exception('Specify one or none of time and date for %s' % self)
+            raise Exception(f'Specify one or none of time and date for {self}')
         if not time and not date:
             time = TIME_ZERO
         if date:
             time = local_date_to_time(date)
         if time != TIME_ZERO and self.single:
-            raise Exception('%s was given time %s but is not time-variable' % (self, format_time(to_time(time))))
+            raise Exception(
+                f'{self} was given time {format_time(to_time(time))} but is not time-variable'
+            )
+
         sjournal = STATISTIC_JOURNAL_CLASSES[self.statistic_name.statistic_journal_type](
             statistic_name=self.statistic_name, source=self, value=value, time=time)
         self.validate(s, sjournal)
@@ -60,22 +63,22 @@ class Constant(Source):
 
     def at(self, s, time=None, date=None):
         if time and date:
-            raise Exception('Specify one or none of time and date for %s' % self)
+            raise Exception(f'Specify one or none of time and date for {self}')
         if date:
             time = local_date_to_time(date)
         if not time:
             time = dt.datetime.now(tz=pytz.UTC)
         return s.query(StatisticJournal). \
-            filter(StatisticJournal.statistic_name == self.statistic_name,
+                filter(StatisticJournal.statistic_name == self.statistic_name,
                    StatisticJournal.time <= time,
                    StatisticJournal.source == self). \
-            order_by(desc(StatisticJournal.time)).limit(1).one_or_none()
+                order_by(desc(StatisticJournal.time)).limit(1).one_or_none()
 
     @classmethod
     def from_name(cls, s, name, none=False):
         constant = s.query(Constant).filter(Constant.name == name).one_or_none()
         if constant is None and not none:
-            raise Exception('Could not find Constant for %s' % name)
+            raise Exception(f'Could not find Constant for {name}')
         return constant
 
     @classmethod
@@ -98,10 +101,7 @@ class Constant(Source):
 
     @property
     def short_name(self):
-        if ':' in self.name:
-            return self.name.split(':')[0]
-        else:
-            return self.name
+        return self.name.split(':')[0] if ':' in self.name else self.name
 
     __mapper_args__ = {
         'polymorphic_identity': SourceType.CONSTANT

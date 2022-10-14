@@ -35,9 +35,9 @@ def parse_data(data, types, messages, no_validate=False, max_delta_t=None):
 
 
 def dump(data, offset, rows=3, blocks=6, block=4):
-    for row in range(rows):
+    for _ in range(rows):
         line = '%06d' % offset
-        for b in range(blocks):
+        for _ in range(blocks):
             line += ' '
             line += tohex(data[offset:offset+block])
             offset += block

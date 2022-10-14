@@ -73,10 +73,7 @@ def expand_activity(s, activity_journal):
             return None
 
     def value(statistic):
-        if statistic:
-            return statistic.value
-        else:
-            return None
+        return statistic.value if statistic else None
 
     return {DB: activity_journal.id,
             'name': {VALUE: value(StatisticJournal.for_source(s, topic_journal.id, N.NAME,

@@ -53,9 +53,8 @@ class ActivityDisplayer(Displayer):
             try:
                 if pipeline.interpolate:
                     yield from pipeline.read_journal_date(s, ajournal, date)
-                else:
-                    entry = list(pipeline.read_journal_date(s, ajournal, date))
-                    if entry: yield entry
+                elif entry := list(pipeline.read_journal_date(s, ajournal, date)):
+                    yield entry
             except Exception as e:
                 log.warning(f'Error calling {pipeline}')
                 log_current_exception(traceback=True)
@@ -63,19 +62,18 @@ class ActivityDisplayer(Displayer):
     @optional_text('Activities')
     def _read_schedule(self, s, date, schedule):
         intervals = s.query(Interval).join(ActivityGroup). \
-            filter(Interval.schedule == schedule,
+                filter(Interval.schedule == schedule,
                    Interval.start == date).all()
         intervals = sorted(intervals, key=lambda i: i.activity_group.name if i.activity_group else '')
         for interval in intervals:
-            pipelines = list(self._read_pipelines(s, interval))
-            if pipelines:
+            if pipelines := list(self._read_pipelines(s, interval)):
                 yield [text(interval.activity_group.name, tag='activity-group')] + pipelines
 
     def _read_pipelines(self, s, interval):
         for pipeline in Pipeline.all_instances(s, PipelineType.DISPLAY_ACTIVITY):
             try:
-                 results = list(pipeline.read_interval(s, interval))
-                 if results: yield results
+                if results := list(pipeline.read_interval(s, interval)):
+                    yield results
             except Exception as e:
                 log.warning(f'Error calling {pipeline} with {interval}')
                 log_current_exception(traceback=True)
@@ -100,18 +98,11 @@ class ActivityDelegate(ActivityJournalDelegate):
         cache = tjournal.cache(s)
         # special case root
         for field in s.query(ActivityTopicField). \
-                join(ActivityTopic). \
-                filter(ActivityTopic.title == ActivityTopic.ROOT,
-                       or_(ActivityTopic.activity_group_id == None,
-                           ActivityTopic.activity_group_id == ajournal.activity_group.id)). \
-                order_by(ActivityTopicField.sort).all():
+                    join(ActivityTopic). \
+                    filter(ActivityTopic.title == ActivityTopic.ROOT, or_(ActivityTopic.activity_group_id is None, ActivityTopic.activity_group_id == ajournal.activity_group.id)).order_by(ActivityTopicField.sort).all():
             yield from_field(field, cache[field])
         for topic in s.query(ActivityTopic). \
-                filter(ActivityTopic.parent == None,
-                       ActivityTopic.title != ActivityTopic.ROOT,
-                       or_(ActivityTopic.activity_group_id == None,
-                           ActivityTopic.activity_group_id == ajournal.activity_group.id)). \
-                order_by(ActivityTopic.sort).all():
+                    filter(ActivityTopic.parent is None, ActivityTopic.title != ActivityTopic.ROOT, or_(ActivityTopic.activity_group_id is None, ActivityTopic.activity_group_id == ajournal.activity_group.id)).order_by(ActivityTopic.sort).all():
             yield list(self.__read_activity_topic(s, date, cache, topic))
 
     def __read_activity_topic(self, s, date, cache, topic):
@@ -122,42 +113,52 @@ class ActivityDelegate(ActivityJournalDelegate):
             yield from_field(field, cache[field])
         for child in topic.children:
             if child.activity_group == topic.activity_group and child.schedule.at_location(date):
-                content = list(self.__read_activity_topic(s, date, cache, child))
-                if content: yield content
+                if content := list(
+                    self.__read_activity_topic(s, date, cache, child)
+                ):
+                    yield content
 
     def __read_details(self, s, ajournal, date):
-        zones = list(self.__read_zones(s, ajournal))
-        if zones: yield [text('HR Zones (% time)')] + zones
-        active_data = list(self.__read_active_data(s, ajournal, date))
-        if active_data: yield [text('Activity Statistics')] + active_data
-        climbs = list(self.__read_climbs(s, ajournal, date))
-        if climbs: yield [text('Climbs')] + climbs
-        sectors = list(self.__read_sectors(s, ajournal, date))
-        # ajournal id as we link to new sectors for that activity
-        if sectors: yield [text('Sectors', db=ajournal.id)] + sectors
-        for (title, template, re) in (('Min Time', N.MIN_KM_TIME_ANY, r'(\d+km)'),
-                                      ('Med Time', N.MED_KM_TIME_ANY, r'(\d+km)'),
-                                      ('Max Med Heart Rate', N.MAX_MED_HR_M_ANY, r'(\d+m)'),
-                                      ('Max Mean Power Estimate', N.MAX_MEAN_PE_M_ANY, r'(\d+m)')):
-            model = list(self.__read_template(s, ajournal, template, re, date))
-            if model: yield [text(title)] + model
+        if zones := list(self.__read_zones(s, ajournal)):
+            yield [text('HR Zones (% time)')] + zones
+        if active_data := list(self.__read_active_data(s, ajournal, date)):
+            yield [text('Activity Statistics')] + active_data
+        if climbs := list(self.__read_climbs(s, ajournal, date)):
+            yield [text('Climbs')] + climbs
+        if sectors := list(self.__read_sectors(s, ajournal, date)):
+            yield [text('Sectors', db=ajournal.id)] + sectors
+        for title, template, re in (('Min Time', N.MIN_KM_TIME_ANY, r'(\d+km)'), ('Med Time', N.MED_KM_TIME_ANY, r'(\d+km)'), ('Max Med Heart Rate', N.MAX_MED_HR_M_ANY, r'(\d+m)'), ('Max Mean Power Estimate', N.MAX_MEAN_PE_M_ANY, r'(\d+m)')):
+            if model := list(
+                self.__read_template(s, ajournal, template, re, date)
+            ):
+                yield [text(title)] + model
 
     @staticmethod
     def __read_zones(s, ajournal):
-        percent_times = s.query(StatisticJournal).join(StatisticName). \
-            filter(StatisticJournal.time == ajournal.start,
-                   StatisticName.name.like(N.PERCENT_IN_Z_ANY),
-                   StatisticName.owner == ActivityCalculator) \
-            .order_by(StatisticName.name).all()
-        if percent_times:
+        if (
+            percent_times := s.query(StatisticJournal)
+            .join(StatisticName)
+            .filter(
+                StatisticJournal.time == ajournal.start,
+                StatisticName.name.like(N.PERCENT_IN_Z_ANY),
+                StatisticName.owner == ActivityCalculator,
+            )
+            .order_by(StatisticName.name)
+            .all()
+        ):
             for zone, percent_time in reversed(list(enumerate((time.value for time in percent_times), start=1))):
                 yield [value('Zone', zone, tag='hr-zone'), value('Percent time', percent_time)]
 
     @staticmethod
     def __read_active_data(s, ajournal, date):
         for name in (N.ACTIVE_DISTANCE, N.ACTIVE_TIME, N.ACTIVE_SPEED, N.MEAN_POWER_ESTIMATE):
-            sjournal = StatisticJournal.at(s, ajournal.start, name, ActivityCalculator, ajournal.activity_group)
-            if sjournal:
+            if sjournal := StatisticJournal.at(
+                s,
+                ajournal.start,
+                name,
+                ActivityCalculator,
+                ajournal.activity_group,
+            ):
                 yield value(sjournal.statistic_name.title, sjournal.value,
                             units=sjournal.statistic_name.units,
                             measures=sjournal.measures_as_model(date))
@@ -169,8 +170,9 @@ class ActivityDelegate(ActivityJournalDelegate):
                             units=sjournal.statistic_name.units,
                             measures=sjournal.measures_as_model(date))
         for name in (N.ENERGY_ESTIMATE, N.CALORIE_ESTIMATE):
-            sjournal = StatisticJournal.at(s, ajournal.start, name, PowerCalculator, ajournal.activity_group)
-            if sjournal:
+            if sjournal := StatisticJournal.at(
+                s, ajournal.start, name, PowerCalculator, ajournal.activity_group
+            ):
                 yield value(sjournal.statistic_name.title, sjournal.value,
                             units=sjournal.statistic_name.units,
                             measures=sjournal.measures_as_model(date))
@@ -229,7 +231,7 @@ class ActivityDelegate(ActivityJournalDelegate):
         for stat in stats:
             sector_journal = stat['sector-journal']
             sector = sector_journal.sector
-            title = sector.title if sector.title else f'Sector at {sector_journal.start_distance:.1f} {U.KM}'
+            title = sector.title or f'Sector at {sector_journal.start_distance:.1f} {U.KM}'
             yield [text('Sector', db=(sector.id, sector_journal.id)),
                    text(title),
                    cls.__thumbnail(stat[N.SECTOR_TIME]),
@@ -262,12 +264,16 @@ class ActivityDelegate(ActivityJournalDelegate):
     def read_interval(self, s, interval):
         for name in (N.ACTIVE_DISTANCE, N.ACTIVE_TIME, N.ACTIVE_SPEED, N.TOTAL_CLIMB, N.CLIMB_ELEVATION,
                      N.CLIMB_DISTANCE, N.CLIMB_GRADIENT, N.CLIMB_TIME):
-            column = list(interval_column(s, interval, name, SummaryCalculator))
-            if column: yield column
+            if column := list(
+                interval_column(s, interval, name, SummaryCalculator)
+            ):
+                yield column
         for template in (N.MIN_KM_TIME_ANY, N.MED_KM_TIME_ANY, N.MAX_MED_HR_M_ANY):
             for name in self.__sort_names(self.__names_like(s, template)):
-                column = list(interval_column(s, interval, name, SummaryCalculator))
-                if column: yield column
+                if column := list(
+                    interval_column(s, interval, name, SummaryCalculator)
+                ):
+                    yield column
 
     @staticmethod
     def __names_like(s, name):
@@ -285,7 +291,7 @@ def active_dates(s, start, range, fmt):
     times = s.query(distinct(ActivityJournal.start)). \
         filter(ActivityJournal.start >= time_start,
                ActivityJournal.start < time_end).all()
-    return list(set(time_to_local_date(row[0]).strftime(fmt) for row in times))
+    return list({time_to_local_date(row[0]).strftime(fmt) for row in times})
 
 
 def active_days(s, month):
@@ -304,10 +310,12 @@ def latest_activity(s):
 def activity_times_by_group(s):
     by_group = {}
     for group in s.query(ActivityGroup).all():
-        activities = [time_to_local_time(activity.start)
-                      for activity in s.query(ActivityJournal).
-                          filter(ActivityJournal.activity_group == group).
-                          order_by(desc(ActivityJournal.start)).all()]
-        if activities:
+        if activities := [
+            time_to_local_time(activity.start)
+            for activity in s.query(ActivityJournal)
+            .filter(ActivityJournal.activity_group == group)
+            .order_by(desc(ActivityJournal.start))
+            .all()
+        ]:
             by_group[group.name] = activities
     return by_group

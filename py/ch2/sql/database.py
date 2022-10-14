@@ -92,7 +92,7 @@ class DatabaseBase:
             self.engine.connect().execute(text('select 1')).fetchone()  # test connection
         except:
             log_current_exception(traceback=False)
-            raise CannotConnect(f'Could not connect to database')
+            raise CannotConnect('Could not connect to database')
 
     def no_schema(self, table):
         return not inspect(self.engine).has_table(table.__tablename__)

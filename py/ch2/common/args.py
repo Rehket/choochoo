@@ -58,8 +58,7 @@ class NamespaceWithVariables(MutableMapping):
         return path
 
     def _with(self, **kargs):
-        data = dict(self.__dict)
-        data.update(kargs)
+        data = dict(self.__dict) | kargs
         return self.__class__(self.__env_prefix, data)
 
     def __bar(self, name):
@@ -77,22 +76,39 @@ class NamespaceWithVariables(MutableMapping):
         return value
 
 
-def mm(name): return '--' + name
+def mm(name):
+    return f'--{name}'
 
 
-def m(name): return '-' + name
+def m(name):
+    return f'-{name}'
 
 
-def no(name): return 'no-%s' % name
+def no(name):
+    return f'no-{name}'
 
 
 def add_server_args(cmd, prefix='', default_address='localhost', default_port=80, name=''):
     if prefix: prefix += '-'
     if name: name += ' '
-    cmd.add_argument(mm(prefix + BIND), default='localhost', metavar='ADDRESS',
-                     help=name + 'bind address' + f' (default {default_address})' if default_address else '')
-    cmd.add_argument(mm(prefix + PORT), default=default_port, type=int, metavar='PORT',
-                     help=name + f'port' + f' (default {default_port})' if default_port else '')
+    cmd.add_argument(
+        mm(prefix + BIND),
+        default='localhost',
+        metavar='ADDRESS',
+        help=f'{name}bind address' + f' (default {default_address})'
+        if default_address
+        else '',
+    )
+
+    cmd.add_argument(
+        mm(prefix + PORT),
+        default=default_port,
+        type=int,
+        metavar='PORT',
+        help=f'{name}port' + f' (default {default_port})'
+        if default_port
+        else '',
+    )
 
 
 def add_data_source_args(parser, uri_default):

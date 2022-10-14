@@ -99,11 +99,11 @@ class SummaryCalculator(LoaderMixin, IntervalCalculatorMixin, ProcessCalculator)
             self._calculate_measures(s, statistic_name, order_asc, start_time, finish_time, interval, measures)
             return None, None
         else:
-            raise Exception('Bad summary: %s' % summary)
+            raise Exception(f'Bad summary: {summary}')
 
         stmt = select([result]). \
-            select_from(sjx).select_from(t.sj).select_from(t.src). \
-            where(and_(t.sj.c.id == sjx.c.id,
+                select_from(sjx).select_from(t.sj).select_from(t.src). \
+                where(and_(t.sj.c.id == sjx.c.id,
                        t.sj.c.statistic_name_id == statistic_name.id,
                        t.sj.c.time >= start_time,
                        t.sj.c.time < finish_time,
@@ -115,10 +115,7 @@ class SummaryCalculator(LoaderMixin, IntervalCalculatorMixin, ProcessCalculator)
     def _describe(self, statistic_name, summary, interval):
         adjective = {S.MAX: 'highest', S.MIN: 'lowest', S.SUM: 'total', S.CNT: 'number of', S.AVG: 'average'}[summary]
         period = interval.schedule.describe().lower()
-        if period == 'all':
-            period = period + ' time'
-        else:
-            period = 'one ' + period
+        period = f'{period} time' if period == 'all' else f'one {period}'
         return f'The {adjective} {statistic_name.title} over {period}.'
 
     def _calculate_measures(self, s, statistic_name, order_asc, start_time, finish_time, interval, measures):
@@ -133,17 +130,14 @@ class SummaryCalculator(LoaderMixin, IntervalCalculatorMixin, ProcessCalculator)
                       key=lambda x: x.value, reverse=not order_asc)
         n, local_measures = len(data), []
         for rank, journal in enumerate(data, start=1):
-            if n > 1:
-                percentile = (n - rank) / (n - 1) * 100
-            else:
-                percentile = 100
+            percentile = (n - rank) / (n - 1) * 100 if n > 1 else 100
             measure = StatisticMeasure(statistic_journal=journal, source=interval, rank=rank, percentile=percentile)
             local_measures.append(measure)
             measures.append(measure)
         if n > 8:  # avoid overlap in fuzzing (and also, plot individual points in this case)
             for q in range(5):
                 local_measures[fuzz(n, q)].quartile = q
-        log.debug('Ranked %s' % statistic_name)
+        log.debug(f'Ranked {statistic_name}')
 
     @classmethod
     def parse_title(cls, name):
@@ -154,4 +148,4 @@ class SummaryCalculator(LoaderMixin, IntervalCalculatorMixin, ProcessCalculator)
     @classmethod
     def fmt_title(cls, name, summary, schedule):
         title = summary.capitalize()
-        return '%s/%s %s' % (title, schedule.describe(), name)
+        return f'{title}/{schedule.describe()} {name}'

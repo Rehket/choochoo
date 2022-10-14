@@ -19,9 +19,9 @@ def expand_max(lo, hi, n, f):
 
     try:
         for _ in range(n):
-            log.info('%s' % data)
+            log.info(f'{data}')
             while len(data) > 3:
-                w = sum(x*fx for (i, (x, fx)) in enumerate(data)) / sum(fx for (x, fx) in data)
+                w = sum(x*fx for x, fx in data) / sum(fx for (x, fx) in data)
                 m = sum(x for (x, fx) in data) / len(data)
                 if w > m:
                     del data[0]

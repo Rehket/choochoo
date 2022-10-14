@@ -21,8 +21,11 @@ class Message(Named):
     def __init__(self, log, name, number=None, warn=False):
         super().__init__(log, name)
         self.number = number
-        self._profile_to_field = WarnDict(log, 'No field for profile %r') if warn else dict()
-        self._number_to_field = WarnDict(log, 'No field for number %r') if warn else dict()
+        self._profile_to_field = (
+            WarnDict(log, 'No field for profile %r') if warn else {}
+        )
+
+        self._number_to_field = WarnDict(log, 'No field for number %r') if warn else {}
 
     def _add_field(self, field):
         self._profile_to_field[field.name] = field
@@ -90,12 +93,18 @@ class Messages:
 
     def __init__(self, log, sheet, types, warn=False):
         self.__log = log
-        self.__profile_to_message = WarnDict(log, 'No message for profile %r') if warn else dict()
-        self.__number_to_message = WarnDict(log, 'No message for number %r') if warn else dict()
+        self.__profile_to_message = (
+            WarnDict(log, 'No message for profile %r') if warn else {}
+        )
+
+        self.__number_to_message = (
+            WarnDict(log, 'No message for number %r') if warn else {}
+        )
+
         rows = Rows(sheet, wrapper=Row)
         for row in rows:
             if row.msg_name and row.msg_name[0].isupper():
-                self.__log.debug('Skipping %s' % (row,))
+                self.__log.debug(f'Skipping {row}')
             elif row.msg_name:
                 # self.__log.info('Parsing message %s' % row.msg_name)
                 self.__add_message(RowMessage(self.__log, row, rows, types, warn=warn))

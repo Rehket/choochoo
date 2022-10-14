@@ -77,8 +77,7 @@ class ActivityJournal(GroupedSource):
     }
 
     def __str__(self):
-        return 'ActivityJournal %s %s to %s' % (self.activity_group.name,
-                                                format_time(self.start), format_time(self.finish))
+        return f'ActivityJournal {self.activity_group.name} {format_time(self.start)} to {format_time(self.finish)}'
 
     def time_range(self, s):
         return self.start, self.finish
@@ -138,10 +137,9 @@ class ActivityJournal(GroupedSource):
             q = q.filter(ActivityJournal.activity_group_id == activity_group.id)
         if q.count():
             return q.one()
-        else:
-            msg = f'No activity found at {local_time} ({time})'
-            if activity_group: msg += f' for {activity_group}'
-            raise Exception(msg)
+        msg = f'No activity found at {local_time} ({time})'
+        if activity_group: msg += f' for {activity_group}'
+        raise Exception(msg)
 
     @classmethod
     def before_local_time(cls, s, local_time):
@@ -187,7 +185,7 @@ class ActivityTimespan(Base):
     UniqueConstraint(activity_journal_id, start)
 
     def __str__(self):
-        return 'ActivityTimespan from %s - %s' % (format_time(self.start), format_time(self.finish))
+        return f'ActivityTimespan from {format_time(self.start)} - {format_time(self.finish)}'
 
 
 class ActivityBookmark(Base):
@@ -204,5 +202,5 @@ class ActivityBookmark(Base):
     UniqueConstraint(activity_journal_id, start, finish, owner, constraint)
 
     def __str__(self):
-        return 'ActivityBookmark from %s - %s' % (format_time(self.start), format_time(self.finish))
+        return f'ActivityBookmark from {format_time(self.start)} - {format_time(self.finish)}'
 

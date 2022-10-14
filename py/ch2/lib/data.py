@@ -55,7 +55,7 @@ def tohex(data):
 def assert_attr(instance, *attrs):
     for attr in attrs:
         if getattr(instance, attr) is None:
-            raise Exception('No %s defined' % attr)
+            raise Exception(f'No {attr} defined')
 
 
 def kargs_to_attr(**kargs):
@@ -100,11 +100,13 @@ def reftuple(name, *args, **kargs):
     (# is similar, but also does JSON parsing).
     '''
 
-    class klass(namedtuple(name, *args, **kargs)):
+
+
+    class klass((namedtuple(name, *args, **kargs))):
 
         def expand(self, s, time, default_owner=None, default_activity_group=None):
             instance = self
-            for name in self._fields:
+            for name in instance._fields:
                 value = getattr(instance, name)
                 log.debug(f'Expanding {name}: {value} at {time}')
                 value = expand(s, value, time, default_owner=default_owner,
@@ -112,6 +114,7 @@ def reftuple(name, *args, **kargs):
                 log.debug(f'Setting {name} = {value}')
                 instance = instance._replace(**{name: value})
             return instance
+
 
     klass.__name__ = name
     caller = stack()[1]
@@ -124,10 +127,7 @@ class MaxDict(dict):
     def __init__(self, kv):
         super().__init__()
         for key, value in kv:
-            if key in self:
-                self[key] = max(value, self[key])
-            else:
-                self[key] = value
+            self[key] = max(value, self[key]) if key in self else value
 
 
 def tmp_name():
@@ -138,18 +138,19 @@ def nearest_index(df, name, value):
     exactmatch = df.loc[df[name] == value]
     if not exactmatch.empty:
         return exactmatch.index[0]
+    lower = df.loc[df[name] < value].index.dropna()
+    upper = df.loc[df[name] > value].index.dropna()
+    if lower.empty:
+        return upper.min()
+    elif upper.empty:
+        return lower.max()
     else:
-        lower = df.loc[df[name] < value].index.dropna()
-        upper = df.loc[df[name] > value].index.dropna()
-        if lower.empty:
-            return upper.min()
-        elif upper.empty:
-            return lower.max()
-        else:
-            if abs(value - df.loc[lower.max()][name]) < abs(value - df.loc[upper.min()][name]):
-                return lower.max()
-            else:
-                return upper.min()
+        return (
+            lower.max()
+            if abs(value - df.loc[lower.max()][name])
+            < abs(value - df.loc[upper.min()][name])
+            else upper.min()
+        )
 
 
 def get_index_loc(df, value):
@@ -242,10 +243,7 @@ def median(list):
     if not list: raise ValueError('Median of empty set')
     list = sorted(list)
     n = len(list)
-    if n % 2:
-        return list[n//2]
-    else:
-        return (list[n//2] + list[n//2+1]) / 2
+    return list[n//2] if n % 2 else (list[n//2] + list[n//2+1]) / 2
 
 
 def safe_return(make_retval):

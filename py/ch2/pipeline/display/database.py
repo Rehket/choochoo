@@ -26,4 +26,3 @@ class DatabaseDisplayer(Displayer):
     def _read_schedule(self, s, date, schedule):
         # todo - include?
         return
-        yield

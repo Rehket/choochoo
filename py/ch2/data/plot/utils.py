@@ -11,11 +11,15 @@ def tooltip(name):
 
 
 def make_tools(y):
-    tools = [PanTool(dimensions='width'),
-             ZoomInTool(dimensions='width'), ZoomOutTool(dimensions='width'),
-             ResetTool(),
-             HoverTool(tooltips=[tooltip(x) for x in (y, N.DISTANCE_KM, N.LOCAL_TIME)])]
-    return tools
+    return [
+        PanTool(dimensions='width'),
+        ZoomInTool(dimensions='width'),
+        ZoomOutTool(dimensions='width'),
+        ResetTool(),
+        HoverTool(
+            tooltips=[tooltip(x) for x in (y, N.DISTANCE_KM, N.LOCAL_TIME)]
+        ),
+    ]
 
 
 def make_range(column, lo=None, hi=None):

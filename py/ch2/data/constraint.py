@@ -27,7 +27,7 @@ def pat(regexp, trans=None):
 
 
 def lit(text, trans=None):
-    return pat('(' + escape(text) + ')', trans=trans)
+    return pat(f'({escape(text)})', trans=trans)
 
 
 def unexp(values):
@@ -62,8 +62,11 @@ number = choice(pat(r'(-?\d+)', lambda x: [int(i) for i in x]),
 string = choice(pat(r'"((?:[^"\\]|\\.)*)"'), pat(r"'((?:[^'\\]|\\.)*)'"))
 date = r'\d{4}-\d{2}-\d{2}'
 time = r'\d{2}(?::\d{2}(?::\d{2})?)?'
-datetime = pat('(' + date + '(?: ' + time + ')?)', lambda x: [local_time_to_time(t) for t in x])
-utc = pat('(' + date + 'T' + time + ')', lambda x: [to_time(t) for t in x])
+datetime = pat(
+    f'({date}(?: {time})?)', lambda x: [local_time_to_time(t) for t in x]
+)
+
+utc = pat(f'({date}T{time})', lambda x: [to_time(t) for t in x])
 null = transform(lit(NULL), lambda x: [None])
 value = choice(number, string, datetime, utc, null)
 
@@ -232,7 +235,8 @@ def build_comparisons(s, ast, with_conversion):
 
 def get_op_attr(op, value):
     attrs = {'=': '__eq__', '!=': '__ne__', '>': '__gt__', '>=': '__ge__', '<': '__lt__', '<=': '__le__'}
-    if isinstance(value, str): attrs.update({'=': 'ilike', '!=': 'nlike'})
+    if isinstance(value, str):
+        attrs |= {'=': 'ilike', '!=': 'nlike'}
     return attrs[op]
 
 
@@ -249,7 +253,7 @@ def get_source_ids(s, owner, name, op, value, group, type):
         if group:
             q = q.join(ActivityGroup).filter(ActivityGroup.name.ilike(group))
         else:
-            q = q.filter(Source.activity_group_id == None)
+            q = q.filter(Source.activity_group_id is None)
     if op_attr == 'nlike':  # no way to negate like in a single attribute
         q = q.filter(not_(statistic_journal.value.ilike(value)))
     else:
@@ -267,7 +271,7 @@ def get_source_ids_for_null(s, owner, name, group, with_conversion):
         if group:
             q = q.join(ActivityGroup).filter(ActivityGroup.name.ilike(group))
         else:
-            q = q.join(Source).filter(Source.activity_group_id == None)
+            q = q.join(Source).filter(Source.activity_group_id is None)
     if with_conversion:
         # will invert later (in conversion)
         return q
@@ -287,7 +291,7 @@ def parse_property(qname):
     try:
         clz = lookup_cls(cls)
     except:
-        cls = 'ch2.sql.' + cls
+        cls = f'ch2.sql.{cls}'
         clz = lookup_cls(cls)
     getattr(clz, attr)
     log.info(f'Parsed {qname} as {clz}.{attr}')

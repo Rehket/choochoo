@@ -19,8 +19,8 @@ class Loader(ABC):
         self.__clear_timestamp = clear_timestamp
         self.__batch = batch
 
-        self.__statistic_name_cache = dict()
-        self.__source_cache = dict()
+        self.__statistic_name_cache = {}
+        self.__source_cache = {}
         self._staging = defaultdict(list)
         self.__by_name_then_time = defaultdict(dict)
         self.__add_serial = add_serial

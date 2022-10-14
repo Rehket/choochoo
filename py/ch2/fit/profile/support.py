@@ -31,7 +31,7 @@ class Named:
         self.name = name
 
     def __str__(self):
-        return '%s: %s' % (self.__class__.__name__, self.name)
+        return f'{self.__class__.__name__}: {self.name}'
 
 
 class Rows:
@@ -66,10 +66,7 @@ class Rows:
                 self.__next.append(next(self.__rows))
             except StopIteration:
                 pass
-        if self.__next:
-            return self.__next[0]
-        else:
-            return None
+        return self.__next[0] if self.__next else None
 
     def lookahead(self):
         yield from self.__next

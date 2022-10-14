@@ -40,15 +40,12 @@ def no_units(data):
 
 def to_hex(data):
     for name, (values, units) in data:
-        if values is None:
-            yield name, (values, units)
-        else:
-            if len(values) > 1:  # single values are best displayed as integers (common data type)
-                try:
-                    values = ('0x'+values.hex(),)
-                except AttributeError:
-                    pass
-            yield name, (values, units)
+        if values is not None and len(values) > 1:
+            try:
+                values = (f'0x{values.hex()}', )
+            except AttributeError:
+                pass
+        yield name, (values, units)
 
 
 def append_units(data, separator=''):
@@ -79,7 +76,7 @@ def fix_degrees(data, new_units='°'):
 
 def unpack_single_bytes(data):
     for name, (values, units) in data:
-        if values is None or not (isinstance(values, bytes) and len(values) == 1):
+        if values is None or not isinstance(values, bytes) or len(values) != 1:
             yield name, (values, units)
         else:
             yield name, (values[0], units)

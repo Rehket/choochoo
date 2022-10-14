@@ -32,11 +32,10 @@ class Counter:
                 self.__previous = self.__start
             else:
                 self.__previous += self.__delta
+        elif reset <= self.__previous:
+            raise Exception('Sort not increasing with reset')
         else:
-            if reset <= self.__previous:
-                raise Exception('Sort not increasing with reset')
-            else:
-                self.__previous = reset
+            self.__previous = reset
         return self.__previous
 
 

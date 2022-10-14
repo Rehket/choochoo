@@ -52,13 +52,13 @@ class Token:
         self.data = data
 
     def __str__(self):
-        return '%s %s' % (self.tag, tohex(self.data))
+        return f'{self.tag} {tohex(self.data)}'
 
     def __len__(self):
         return len(self.data)
 
     def _fake_field(self, key, value):
-        if isinstance(value, tuple) or isinstance(value, list):
+        if isinstance(value, (tuple, list)):
             values, units = value
             if not isinstance(values, tuple) and not isinstance(values, list):
                 values = (values,)
@@ -94,7 +94,7 @@ class Token:
     def describe_fields(self, types):
         for name, (values, units) in self.parse_token(raw_data=True).data:
             value = tohex(values[0])
-            yield '%s - %s' % (value, sub('_', ' ', name))
+            yield f"{value} - {sub('_', ' ', name)}"
 
     def repair_timestamp(self, timestamp):
         pass
@@ -144,22 +144,22 @@ class FileHeader(ValidateToken):
             self._error('Header size too small (%d)' % self.header_size, log, quiet)
         if self.header_size not in (12, 14):
             log.warning('Header size not standard (%d/12-14)' % self.header_size)
-        if header_size is not None:
-            if self.header_size != header_size:
-                self._error('Header size incorrect (%d/%d)' % (self.header_size, header_size), log, quiet)
-        if protocol_version is not None:
-            if self.profile_version != protocol_version:
-                self._error('Protocol version incorrect (%d%d)' % (self.protocol_version, protocol_version), log, quiet)
-        if profile_version is not None:
-            if self.profile_version != profile_version:
-                self._error('Profile version incorrect (%d%d)' % (self.profile_version, profile_version), log, quiet)
+        if header_size is not None and self.header_size != header_size:
+            self._error('Header size incorrect (%d/%d)' % (self.header_size, header_size), log, quiet)
+        if (
+            protocol_version is not None
+            and self.profile_version != protocol_version
+        ):
+            self._error('Protocol version incorrect (%d%d)' % (self.protocol_version, protocol_version), log, quiet)
+        if profile_version is not None and self.profile_version != profile_version:
+            self._error('Profile version incorrect (%d%d)' % (self.profile_version, profile_version), log, quiet)
         if len(data) != self.data_size + len(self) + 2:
             self._error('Data size incorrect (%d/%d+%d+2=%d)' % (len(data), self.data_size, len(self),
                                                                  self.data_size + len(self) + 2), log, quiet)
         if self.data_type != FIT:
-            self._error('Data type incorrect (%s)' % (self.data_type,), log, quiet)
+            self._error(f'Data type incorrect ({self.data_type})', log, quiet)
         if self.has_checksum:
-            checksum = Checksum.crc(data[0:12])
+            checksum = Checksum.crc(data[:12])
             if checksum != self.checksum and self.checksum:
                 self._error('Inconsistent checksum (%04x/%04x)' % (checksum, self.checksum), log, quiet)
 
@@ -186,11 +186,11 @@ class FileHeader(ValidateToken):
             self.data_size = data_size
             self.data[4:8] = pack('<I', self.data_size)
         if self.data_type != FIT:
-            log.warning('Fixing header data type: %s -> %s' % (self.data_type, FIT))
+            log.warning(f'Fixing header data type: {self.data_type} -> {FIT}')
             self.data_type = FIT
             self.data[8:12] = self.data_type
         if self.header_size >= 14:
-            checksum = Checksum.crc(self.data[0:12])
+            checksum = Checksum.crc(self.data[:12])
             if not self.has_checksum or checksum != self.checksum:
                 log.warning('Fixing header checksum: %04x -> %04x' %
                             (self.checksum if self.has_checksum else 0, checksum))
@@ -199,11 +199,18 @@ class FileHeader(ValidateToken):
                 self.has_checksum = True
 
     def parse_token(self, raw_data=False, **options):
-        data = {'header_size': self.data[0:1] if raw_data else self.header_size,
-                'protocol_version': self.data[1:2] if raw_data else self.protocol_version,
-                'profile_version': self.data[2:4] if raw_data else self.profile_version,
-                'data_size': (self.data[4:8] if raw_data else self.data_size, 'bytes'),
-                'data_type': self.data[8:12] if raw_data else self.data_type}
+        data = {
+            'header_size': self.data[:1] if raw_data else self.header_size,
+            'protocol_version': self.data[1:2]
+            if raw_data
+            else self.protocol_version,
+            'profile_version': self.data[2:4]
+            if raw_data
+            else self.profile_version,
+            'data_size': (self.data[4:8] if raw_data else self.data_size, 'bytes'),
+            'data_type': self.data[8:12] if raw_data else self.data_type,
+        }
+
         if self.has_checksum:
             data['checksum'] = self.data[12:14] if raw_data else self.checksum
         return self._fake_record('file_header', **data)
@@ -226,13 +233,17 @@ class Defined(Token):
         if len(data) < self.definition.size:
             raise Exception('Insufficient data for %s (%d/%d)' %
                             (self.definition.identity, len(data), self.definition.size))
-        super().__init__(tag, True, data[0:self.definition.size])
+        super().__init__(tag, True, data[:self.definition.size])
 
     def __parse_timestamp(self, data, state):
         field = self.definition.timestamp_field
-        times = field.field.type.parse_type(data[field.start:field.finish], 1, self.definition.endian, state.timestamp,
-                                            check_bad=False)
-        if times:
+        if times := field.field.type.parse_type(
+            data[field.start : field.finish],
+            1,
+            self.definition.endian,
+            state.timestamp,
+            check_bad=False,
+        ):
             state.timestamp = times[0]
         else:
             raise Exception('Could not parse timestamp')
@@ -242,14 +253,17 @@ class Defined(Token):
                                                      accumulators=self._accumulators, **options)
 
     def describe_fields(self, types):
-        yield '%s - header (local message type %d - %s)' % \
-              (tohex(self.data[0:1]), self.data[0] & 0x0f, self.definition.identity)
+        yield (
+            '%s - header (local message type %d - %s)'
+            % (tohex(self.data[:1]), self.data[0] & 0x0F, self.definition.identity)
+        )
+
         for field in sorted(self.definition.fields, key=lambda field: field.start):
             if field.name == 'timestamp':
-                yield '%s - %s (%s) %s' % (tohex(self.data[field.start:field.finish]), field.name,
-                                           field.base_type.name, self.timestamp)
+                yield f'{tohex(self.data[field.start:field.finish])} - {field.name} ({field.base_type.name}) {self.timestamp}'
+
             else:
-                yield '%s - %s (%s)' % (tohex(self.data[field.start:field.finish]), field.name, field.base_type.name)
+                yield f'{tohex(self.data[field.start:field.finish])} - {field.name} ({field.base_type.name})'
 
     def _describe_csv_header(self, record):
         yield self.__class__.__name__
@@ -279,7 +293,7 @@ class DeveloperField(Defined):
         name = record.attr.field_name[0][0]
         units = record.attr.units[0][0]
         state.dev_fields[developer_index][number] = \
-            TypedField(log, name, number, units, None, None, None, base_type.name, state.types)
+                TypedField(log, name, number, units, None, None, None, base_type.name, state.types)
 
     # todo - display differently?
 
@@ -316,14 +330,22 @@ class CompressedTimestamp(Defined):
                                                      accumulators=self._accumulators, **options)
 
     def describe_fields(self, types):
-        yield '%s - header (local message type %d - %s; time delta %d)' % \
-              (tohex(self.data[0:1]), (self.data[0] & 0x60) >> 5, self.definition.message.name, self.data[0] & 0x1f)
+        yield (
+            '%s - header (local message type %d - %s; time delta %d)'
+            % (
+                tohex(self.data[:1]),
+                (self.data[0] & 0x60) >> 5,
+                self.definition.message.name,
+                self.data[0] & 0x1F,
+            )
+        )
+
         for field in sorted(self.definition.fields, key=lambda field: field.start):
             if field.name == 'timestamp':
-                yield '%s - %s (%s) %s' % (tohex(self.data[field.start:field.finish]), field.name,
-                                           field.base_type.name, self.timestamp)
+                yield f'{tohex(self.data[field.start:field.finish])} - {field.name} ({field.base_type.name}) {self.timestamp}'
+
             else:
-                yield '%s - %s (%s)' % (tohex(self.data[field.start:field.finish]), field.name, field.base_type.name)
+                yield f'{tohex(self.data[field.start:field.finish])} - {field.name} ({field.base_type.name})'
 
     def repair_timestamp(self, state):
         timestamp = time_to_timestamp(state.timestamp)
@@ -367,7 +389,7 @@ class Definition(Token):
         self.identity = Identity(self.message.name, state.definition_counter)
         self.fields = self.__process_fields(self._make_fields(data, state), state)
         self.accumulators = state.accumulators
-        super().__init__(tag, False, data[0:overhead+3*len(self.fields)])
+        super().__init__(tag, False, data[:overhead+3*len(self.fields)])
         state.definitions[self.local_message_type] = self
 
     def _make_fields(self, data, state):
@@ -410,18 +432,22 @@ class Definition(Token):
 
     def __sorted(self, fields):
 
-        by_name = dict((field.name, field) for field in fields)
-        names = list(field.name for field in fields)
+        by_name = {field.name: field for field in fields}
+        names = [field.name for field in fields]
         providers = defaultdict(list)
         for field in fields:
             for provided in self.__provided_by(field):
                 providers[provided].append(field.name)
-        references = dict((field.name, field.field.references)
-                          for field in fields if isinstance(field.field, DynamicField))
+        references = {
+            field.name: field.field.references
+            for field in fields
+            if isinstance(field.field, DynamicField)
+        }
+
 
         def follow(name, chain=()):
             if name in chain:
-                raise Exception('Circular dependency: %s/%s' % (chain, name))
+                raise Exception(f'Circular dependency: {chain}/{name}')
             chain = chain + (name,)
             for reference in references.get(name, []):
                 for provider in providers.get(reference, []):
@@ -449,24 +475,33 @@ class Definition(Token):
         for name, (values, units) in self.parse_token(raw_data=True).data:
             if len(values) > 1:
                 (value, extra), padding = values, units
-                extra = ': ' + extra
+                extra = f': {extra}'
             else:
                 value, extra, padding = values[0], '', ''
             value = tohex(value)
-            yield '%s%s - %s%s' % (padding, value, sub('_', ' ', name), extra)
+            yield f"{padding}{value} - {sub('_', ' ', name)}{extra}"
 
     def parse_token(self, raw_data=False, **options):
-        data = {'local_message_type': ((self.data[0:1],
-                                        str(self.local_message_type)), '') if raw_data else self.local_message_type,
-                'reserved': self.data[1:2],
-                'architecture': self.data[2:3],
-                'message_number': ((self.data[3:5], self.message.name), '') if raw_data else self.global_message_no,
-                'no_of_fields': self.data[5:6] if raw_data else self.data[5]}
+        data = {
+            'local_message_type': (
+                (self.data[:1], str(self.local_message_type)),
+                '',
+            )
+            if raw_data
+            else self.local_message_type,
+            'reserved': self.data[1:2],
+            'architecture': self.data[2:3],
+            'message_number': ((self.data[3:5], self.message.name), '')
+            if raw_data
+            else self.global_message_no,
+            'no_of_fields': self.data[5:6] if raw_data else self.data[5],
+        }
+
         if not raw_data:
             data['message_name'] = self.message.name
         for i, field in enumerate(self.fields):
             mult = '' if field.count == 1 else 'x%d' % field.count
-            desc = '%s (%s%s)' % (field.name, field.base_type.name, mult)
+            desc = f'{field.name} ({field.base_type.name}{mult})'
             raw = self.data[6 + i*3:9 + i*3]
             data['field_%d' % i] = ((raw, desc), '  ') if raw_data else desc
         return self._fake_record('definition', **data)
@@ -496,7 +531,7 @@ class DeveloperDefinition(Definition):
     def describe_fields(self, types):
         yield from super().describe_fields(types)
         offset = self.data[5] * 3 + 7
-        yield '%s - no of dev fields' % tohex(self.data[offset-1:offset])
+        yield f'{tohex(self.data[offset - 1:offset])} - no of dev fields'
         for field_data in self.__field_data(self.data):
             fdn, size, ddi = field_data
             yield '  %s - dev fld %d/%d' % (tohex(field_data), fdn, ddi)
@@ -537,27 +572,30 @@ class Checksum(ValidateToken):
             self.data[:2] = pack('<H', checksum)
 
     def parse_token(self, raw_data=False, **options):
-        return self._fake_record('checksum', checksum=self.data[0:2] if raw_data else self.checksum)
+        return self._fake_record(
+            'checksum', checksum=self.data[:2] if raw_data else self.checksum
+        )
 
 
 def token_factory(data, state):
     header = data[0]
     if header & 0x80:
         return CompressedTimestamp(data, state)
-    else:
-        if header & 0x40:
-            if header & 0x20:
-                return DeveloperDefinition(data, state)
-            else:
-                return Definition(data, state)
-        else:
-            if header & 0x10:
-                log.debug('Reserved bit set')
-            token = Data(data, state)
-            if token.definition.global_message_no == FIELD_DESCRIPTION:
-                return DeveloperField(data, state)
-            else:
-                return token
+    if header & 0x40:
+        return (
+            DeveloperDefinition(data, state)
+            if header & 0x20
+            else Definition(data, state)
+        )
+
+    if header & 0x10:
+        log.debug('Reserved bit set')
+    token = Data(data, state)
+    return (
+        DeveloperField(data, state)
+        if token.definition.global_message_no == FIELD_DESCRIPTION
+        else token
+    )
 
 
 class State:
@@ -586,7 +624,7 @@ class State:
                 raise Exception('Too large shift in timestamp (%.1fs: %s/%s' %
                                 ((timestamp - self.timestamp).total_seconds(), self._timestamp, timestamp))
             if timestamp < self._timestamp:
-                raise Exception('Timestep decreased (%s/%s)' % (self._timestamp, timestamp))
+                raise Exception(f'Timestep decreased ({self._timestamp}/{timestamp})')
         return timestamp
 
     def copy(self):

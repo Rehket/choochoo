@@ -54,7 +54,7 @@ class GarminConnect:
 
     def login(self, username, password):
 
-        log.info('Connecting to Garmin Connect as %s' % username)
+        log.info(f'Connecting to Garmin Connect as {username}')
 
         params = {
             # todo - are these all actually needed?  by an sso service?
@@ -100,7 +100,7 @@ class GarminConnect:
             log.debug(response.text)
             raise Exception('Could not find response URL')
         response_url = sub(r'\\', '', response_url.group(1))
-        log.debug('Response URL: %s' % response_url)
+        log.debug(f'Response URL: {response_url}')
 
         response = self._log_r(self._r.get(response_url))
         response.raise_for_status()
@@ -112,11 +112,11 @@ class GarminConnect:
 
     def _log_r(self, response):
         if self._log_response:
-            log.debug('headers: %s' % response.headers)
-            log.debug('reason: %s' % response.reason)
-            log.debug('cookies: %s' % response.cookies)
-            log.debug('history: %s' % response.history)
-            # log.debug('text: %s' % response.text)
+            log.debug(f'headers: {response.headers}')
+            log.debug(f'reason: {response.reason}')
+            log.debug(f'cookies: {response.cookies}')
+            log.debug(f'history: {response.history}')
+                # log.debug('text: %s' % response.text)
         return response
 
     def get_monitoring_to_fit_file(self, date, data_dir, old_format=False):
@@ -125,7 +125,7 @@ class GarminConnect:
         for name in zipfile.namelist():
             if old_format:
                 path = zipfile.extract(name, path=data_dir)
-                log.info('Downloaded data for %s to %s' % (date, path))
+                log.info(f'Downloaded data for {date} to {path}')
             else:
                 file = {DATA: zipfile.read(name), NAME: name}
                 hash_file(file)

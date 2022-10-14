@@ -13,13 +13,14 @@ class ScaledField(Named):
     def __init__(self, log, name, units, scale, offset, accumulate):
         super().__init__(log, name)
         self._units = units
-        self._scale = scale if scale else 1  # treat 0 as 1
-        self._offset = offset if offset else 0
+        self._scale = scale or 1
+        self._offset = offset or 0
         self._accumulate = accumulate
 
     def _parse_and_scale(self, type, data, count, endian, timestamp,
                          scale=None, offset=None, accumulators=None, n_bits=None, **options):
-        if scale is None: scale = self._scale if self._scale else 1
+        if scale is None:
+            scale = self._scale or 1
         if offset is None: offset = self._offset
         values = type.parse_type(data, count, endian, timestamp, scale=scale, offset=offset,
                                  name=self.name, accumulators=accumulators, n_bits=n_bits, **options)
@@ -42,7 +43,7 @@ class TypedField(ScaledField):
         super().__init__(log, name, units, scale, offset, accumulate)
         self.number = field_no
         if name in types.overrides:
-            self._log.info('Overriding type for %s (not %s)' % (name, field_type))
+            self._log.info(f'Overriding type for {name} (not {field_type})')
             field_type = name
         self.type = types.profile_to_type(field_type)
 
@@ -96,7 +97,7 @@ class CompositeField(Zip, TypedField):
         self._components = []
         self.references = []
         for (name, bits, units, scale, offset, accumulate) in \
-                self._zip(row.components, row.bits, row.units, row.scale, row.offset, row.accumulate):
+                    self._zip(row.components, row.bits, row.units, row.scale, row.offset, row.accumulate):
             self._components.append((int(bits),
                                      # set scale / offset below because they seem to override delegate
                                      # (see intensity in CSV examples in SDK inside current_activity_type_intensity)
@@ -161,20 +162,20 @@ class DynamicField(Zip, RowField):
                         data, count, endian, timestamp, references, message, warn=warn, **options)
                     return
         if warn:
-            self._log.warning('Could not resolve dynamic field %s' % self.name)
+            self._log.warning(f'Could not resolve dynamic field {self.name}')
         yield from super().parse_field(data, count, endian, timestamp, references, message, warn=warn, **options)
 
 
 def MessageField(log, row, rows, types):
-    log.debug('Parsing field %s' % row.field_name)
+    log.debug(f'Parsing field {row.field_name}')
     if row.components:
         return CompositeField(log, row, types)
-    else:
-        peek = rows.peek()
-        if row.field_no and peek and peek.field_name and peek.field_no is None:
-            return DynamicField(log, row, rows, types)
-        else:
-            return RowField(log, row, types)
+    peek = rows.peek()
+    return (
+        DynamicField(log, row, rows, types)
+        if row.field_no and peek and peek.field_name and peek.field_no is None
+        else RowField(log, row, types)
+    )
 
 
 class Row(namedtuple('BaseRow',
@@ -184,7 +185,7 @@ class Row(namedtuple('BaseRow',
     __slots__ = ()
 
     def __new__(cls, row):
-        return super().__new__(cls, *tuple(row)[0:16])
+        return super().__new__(cls, *tuple(row)[:16])
 
     def single_int(self, log, value):
         try:

@@ -81,7 +81,7 @@ def args_and_command():
 
 
 def versions():
-    log.info('Version %s' % CH2_VERSION)
+    log.info(f'Version {CH2_VERSION}')
     if version_info < (3, 7):
         raise Exception('Please user Python 3.7 or more recent')
 
@@ -114,7 +114,7 @@ def main():
             exit(1)
         except Exception as e:
             log.critical(e, exc_info=True)
-            log.info('See `%s %s` for available commands.' % (PROGNAME, HELP))
+            log.info(f'See `{PROGNAME} {HELP}` for available commands.')
             log.info('Docs at http://andrewcooke.github.io/choochoo')
             if not args or args[DEV]:
                 raise

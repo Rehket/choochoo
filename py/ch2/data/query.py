@@ -38,7 +38,7 @@ class Statistics:
         self.__s = s
         self.__start = start
         self.__finish = finish
-        self.__sources = sources if sources else []
+        self.__sources = sources or []
         if activity_journal:
             if not isinstance(activity_journal, Source):
                 activity_journal = ActivityJournal.at(s, activity_journal, activity_group=activity_group)
@@ -52,13 +52,15 @@ class Statistics:
         if bookmarks: raise Exception('TODO')
 
     def __save_name(self, statistic_name):
-        if statistic_name.name in self.__statistic_names:
-            if statistic_name != self.__statistic_names[statistic_name.name]:
-                raise Exception(f'Ambiguous name {statistic_name.name}')
+        if (
+            statistic_name.name in self.__statistic_names
+            and statistic_name != self.__statistic_names[statistic_name.name]
+        ):
+            raise Exception(f'Ambiguous name {statistic_name.name}')
         self.__statistic_names[statistic_name.name] = statistic_name
 
     def __name_and_type(self, name, owner, like):
-        owner_name = short_cls(owner) if not isinstance(owner, str) else owner
+        owner_name = owner if isinstance(owner, str) else short_cls(owner)
         try:
             q = self.__s.query(StatisticName).filter(StatisticName.owner == owner)
             if like:
@@ -218,10 +220,7 @@ class Data:
 
     def __with_names_units(self, op, columns):
         for column in columns:
-            if ':' in column:
-                name, group = column.split(':', 1)
-            else:
-                name, group = column, None
+            name, group = column.split(':', 1) if ':' in column else (column, None)
             if name in self.__statistic_names:   # may not have any data
                 statistic_name = self.__statistic_names[name]
                 if group:
@@ -266,7 +265,7 @@ class Data:
         Merge columns named with groups.
         '''
         if not names:
-            names = set(column.split(':')[0] for column in self.df.columns if ':' in column)
+            names = {column.split(':')[0] for column in self.df.columns if ':' in column}
         log.debug(f'Coallescing groups for {names}')
         for name in names:
             if name in self.df.columns:

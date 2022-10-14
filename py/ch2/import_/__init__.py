@@ -46,7 +46,7 @@ def match_statistic_name(record, old_statistic_name, new_s, owner):
 
 def copy_statistic_journal(record, old_s, old, old_statistic_name, old_statistic_journal,
                            new_s, new_statistic_name, source, name=None):
-    name = name if name else new_statistic_name.name
+    name = name or new_statistic_name.name
     old_journals = {StatisticJournalType.INTEGER.value: old.meta.tables['statistic_journal_integer'],
                     StatisticJournalType.FLOAT.value: old.meta.tables['statistic_journal_float'],
                     StatisticJournalType.TEXT.value: old.meta.tables['statistic_journal_text']}

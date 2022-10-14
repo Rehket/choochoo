@@ -47,5 +47,4 @@ def valid_name(name, extended=False):
         clean = sub(r'[^-A-Za-z0-9]', '', name, flags=ASCII)
     if clean != name: return False
     if name.startswith('template'): return False
-    if name in ('postgres', 'admin', 'public'): return False
-    return True
+    return name not in ('postgres', 'admin', 'public')

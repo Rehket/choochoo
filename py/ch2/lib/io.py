@@ -57,8 +57,8 @@ def modified_file_scans(s, paths, owner):
                 order_by(desc(FileScan.last_scan)).limit(1).one()  # must exist as file_scan_from_path is a candidate
             if file_scan_from_hash.path != file_scan_from_path.path:
                 log.warning('Ignoring duplicate file (details in debug log)')
-                log.debug('%s' % file_scan_from_path.path)
-                log.debug('%s' % file_scan_from_hash.path)
+                log.debug(f'{file_scan_from_path.path}')
+                log.debug(f'{file_scan_from_hash.path}')
                 # update the path to avoid triggering in future
                 file_scan_from_path.last_scan = file_scan_from_hash.last_scan
 
@@ -72,10 +72,9 @@ def modified_file_scans(s, paths, owner):
 def split_fit_path(path):
     # returns glob and kit
     pattern = re.compile(r'(.*\d\d\d\d-\d\d-\d\d.*)-([\w,]+).fit')
-    match = pattern.match(path)
-    if match:
-        return match.group(1) + '*.fit', match.group(2)
+    if match := pattern.match(path):
+        return f'{match[1]}*.fit', match[2]
     else:
-        return path[:-4] + '*' + path[-4:], None
+        return f'{path[:-4]}*{path[-4:]}', None
 
 

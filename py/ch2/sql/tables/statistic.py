@@ -44,7 +44,7 @@ class StatisticName(Base):
         super().__init__(**name_and_title(kargs))
 
     def __str__(self):
-        return '%s.%s' % (self.owner, self.name)
+        return f'{self.owner}.{self.name}'
 
     @property
     def summaries(self):
@@ -55,8 +55,7 @@ class StatisticName(Base):
 
     def qualified_name(self, s, activity_group):
         from . import ActivityGroup
-        activity_group = ActivityGroup.from_name(s, activity_group)
-        if activity_group:
+        if activity_group := ActivityGroup.from_name(s, activity_group):
             return f'{self.name}:{activity_group.name}'
         else:
             return self.name
@@ -64,7 +63,7 @@ class StatisticName(Base):
     @classmethod
     def add_if_missing(cls, s, name, type, units, summary, owner, description=None, title=None):
         q = s.query(StatisticName). \
-            filter(StatisticName.name == name,
+                filter(StatisticName.name == name,
                    StatisticName.owner == owner)
         statistic_name = q.one_or_none()
         if not statistic_name:
@@ -82,18 +81,29 @@ class StatisticName(Base):
                 log.debug('Retrieved')
         else:
             if statistic_name.statistic_journal_type != type:
-                raise Exception('Changing type on %s (%s -> %s)' %
-                                (statistic_name.name, statistic_name.statistic_journal_type, type))
+                raise Exception(
+                    f'Changing type on {statistic_name.name} ({statistic_name.statistic_journal_type} -> {type})'
+                )
+
             if statistic_name.units != units:
-                log.warning('Changing units on %s (%s -> %s)' % (statistic_name.name, statistic_name.units, units))
+                log.warning(
+                    f'Changing units on {statistic_name.name} ({statistic_name.units} -> {units})'
+                )
+
                 statistic_name.units = units
                 s.flush()
             if statistic_name.summary != summary:
-                log.warning('Changing summary on %s (%s -> %s)' % (statistic_name.name, statistic_name.summary, summary))
+                log.warning(
+                    f'Changing summary on {statistic_name.name} ({statistic_name.summary} -> {summary})'
+                )
+
                 statistic_name.summary = summary
                 s.flush()
             if statistic_name.description != description:
-                log.warning('Changing description on %s (%s -> %s)' % (statistic_name.name, statistic_name.description, description))
+                log.warning(
+                    f'Changing description on {statistic_name.name} ({statistic_name.description} -> {description})'
+                )
+
                 statistic_name.description = description
                 s.flush()
         return statistic_name
@@ -123,10 +133,7 @@ class StatisticName(Base):
             left, group = qname.rsplit(':', 1)
         else:
             left, group = qname, default_activity_group
-        if '.' in left:
-            owner, name = left.rsplit('.', 1)
-        else:
-            owner, name = default_owner, left
+        owner, name = left.rsplit('.', 1) if '.' in left else (default_owner, left)
         log.debug(f'Parsed {qname} as {owner}.{name}:{group}')
         return owner, name, group
 
@@ -197,7 +204,7 @@ class StatisticJournal(Base):
         elif units in (U.KMH, U.PC, U.BPM, U.STEPS_UNITS, U.W, U.KJ):
             return '%d %s' % (self.value, units)
         elif units == U.KCAL:
-            return '%s %s' % (sigfig(self.value, 2), units)
+            return f'{sigfig(self.value, 2)} {units}'
         else:
             return '%d %s' % (self.value, units)
 
@@ -212,7 +219,7 @@ class StatisticJournal(Base):
                 words += [('quintile-%d' % quintile, '%d%%' % int(measure.percentile))]
                 if measure.rank < 5:
                     words += [':', ('rank-%d' % measure.rank, '%d' % measure.rank)]
-                words += ['/' + measure.source.schedule.describe(compact=True)]
+                words += [f'/{measure.source.schedule.describe(compact=True)}']
         return words
 
     def measures_as_model(self, date):
@@ -223,7 +230,7 @@ class StatisticJournal(Base):
                                   key=lambda measure: measure.source.schedule.frame_length_in_days(date),
                                   reverse=True):
                 measures[SCHEDULES][measure.source.schedule.describe(compact=True)] = \
-                    (measure.percentile, measure.rank)
+                        (measure.percentile, measure.rank)
             return measures
         else:
             return None
@@ -377,13 +384,13 @@ class StatisticJournalFloat(StatisticJournal):
         elif units in (U.KMH, U.PC, U.KG, U.W, U.KJ):
             return '%.1f %s' % (self.value, units)
         elif units == U.KCAL:
-            return '%s %s' % (sigfig(self.value, 2), units)
+            return f'{sigfig(self.value, 2)} {units}'
         elif units in (U.BPM, U.STEPS_UNITS):
             return '%d %s' % (int(self.value), units)
         elif units == U.FF:
             return '%d' % int(self.value)
         else:
-            return '%s %s' % (self.value, units)
+            return f'{self.value} {units}'
 
 
 @add_child_ddl(StatisticJournal)
@@ -407,10 +414,7 @@ class StatisticJournalText(StatisticJournal):
         if self.value is None:
             return None
         units = self.statistic_name.units
-        if not units:
-            return '%s' % self.value
-        else:
-            return '%s %s' % (self.value, units)
+        return f'{self.value} {units}' if units else f'{self.value}'
 
 
 @add_child_ddl(StatisticJournal)
