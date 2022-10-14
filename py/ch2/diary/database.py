@@ -18,7 +18,11 @@ def read_date(s, date):
 
 
 def read_schedule(s, schedule, date):
-    yield text(date.strftime(YMD) + ' - Summary for %s' % schedule.describe(), tag='title')
+    yield text(
+        f'{date.strftime(YMD)} - Summary for {schedule.describe()}',
+        tag='title',
+    )
+
     yield from read_pipeline(s, date, schedule=schedule)
 
 
@@ -40,17 +44,22 @@ def read_pipeline(session, date, schedule=None):
         log.info(f'Building {pipeline.cls} ({pipeline.kargs})')
         instance = pipeline.cls(**pipeline.kargs)
         if isinstance(instance, Displayer):  # why is this needed?
-            data = list(instance.read(session, date, schedule=schedule))
-            if data:
+            if data := list(instance.read(session, date, schedule=schedule)):
                 yield data
 
 
 def interval_column(s, interval, name, owner):
-    statistic_journals = s.query(StatisticJournal). \
-        join(StatisticName). \
-        filter(StatisticJournal.source == interval,
-               StatisticName.owner == owner,
-               StatisticName.name.like('%' + name)).all()
+    statistic_journals = (
+        s.query(StatisticJournal)
+        .join(StatisticName)
+        .filter(
+            StatisticJournal.source == interval,
+            StatisticName.owner == owner,
+            StatisticName.name.like(f'%{name}'),
+        )
+        .all()
+    )
+
     for named, statistic_journal in enumerate(statistic_journal
                                               for statistic_journal in statistic_journals
                                               if statistic_journal.value != 0):

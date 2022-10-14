@@ -46,9 +46,11 @@ class DiaryTopic(Base, Topic):
     finish = Column(Date)
 
     @declared_attr
-    def children(cls):
+    def children(self):
         # http://docs.sqlalchemy.org/en/latest/orm/self_referential.html
-        return relationship('DiaryTopic', backref=backref('parent', remote_side=[cls.id]))
+        return relationship(
+            'DiaryTopic', backref=backref('parent', remote_side=[self.id])
+        )
 
     def __init__(self, id=None, parent=None, parent_id=None, schedule=None, title=None, description=None, sort=None):
         # Topic instances are only created in config.  so we intercept here to
@@ -81,9 +83,11 @@ class ActivityTopic(Base, Topic):
     ROOT_DESCRIPTION = 'The root topic for all activities (should not be displayed).'
 
     @declared_attr
-    def children(cls):
+    def children(self):
         # http://docs.sqlalchemy.org/en/latest/orm/self_referential.html
-        return relationship('ActivityTopic', backref=backref('parent', remote_side=[cls.id]))
+        return relationship(
+            'ActivityTopic', backref=backref('parent', remote_side=[self.id])
+        )
 
     def __str__(self):
         return 'ActivityTopic "%s" (%s)' % (self.title, self.activity_group)
@@ -96,12 +100,12 @@ class TopicField:
     model = Column(Json, nullable=False, server_default=dumps({}))
 
     @declared_attr
-    def statistic_name_id(cls):
+    def statistic_name_id(self):
         # https://stackoverflow.com/questions/24666261/sqlalchemy-mixins-foreignkeys-and-declared-attr
         return Column(Integer, ForeignKey('statistic_name.id', ondelete='cascade'), nullable=False)
 
     @declared_attr
-    def statistic_name(cls):
+    def statistic_name(self):
         return relationship('StatisticName')
 
 
@@ -152,7 +156,7 @@ class Cache:
         self.__session = s
         self.__source = source
         self.__time = time
-        self.__cache = {field_id: statistic for field_id, statistic in query.all()}
+        self.__cache = dict(query.all())
 
     def __getitem__(self, field):
         if field.id not in self.__cache:
@@ -183,10 +187,9 @@ class DiaryTopicJournal(UngroupedSource):
 
     @classmethod
     def get_or_add(cls, s, date):
-        instance = s.query(DiaryTopicJournal).filter(DiaryTopicJournal.date == date).one_or_none()
-        if not instance:
-            instance = add(s, DiaryTopicJournal(date=date))
-        return instance
+        return s.query(DiaryTopicJournal).filter(
+            DiaryTopicJournal.date == date
+        ).one_or_none() or add(s, DiaryTopicJournal(date=date))
 
     def cache(self, s):
         return Cache(s, self, local_date_to_time(self.date),
@@ -195,7 +198,7 @@ class DiaryTopicJournal(UngroupedSource):
                             StatisticJournal.source_id == self.id))
 
     def __str__(self):
-        return 'DiaryTopicJournal from %s' % self.date
+        return f'DiaryTopicJournal from {self.date}'
 
     @classmethod
     def check_tz(cls, data, s):
@@ -236,10 +239,14 @@ class ActivityTopicJournal(GroupedSource):
 
     @classmethod
     def get_or_add(cls, s, file_hash, activity_group):
-        instance = s.query(ActivityTopicJournal).filter(ActivityTopicJournal.file_hash == file_hash).one_or_none()
-        if not instance:
-            instance = add(s, ActivityTopicJournal(file_hash=file_hash, activity_group=activity_group))
-        return instance
+        return s.query(ActivityTopicJournal).filter(
+            ActivityTopicJournal.file_hash == file_hash
+        ).one_or_none() or add(
+            s,
+            ActivityTopicJournal(
+                file_hash=file_hash, activity_group=activity_group
+            ),
+        )
 
     def cache(self, s):
         return Cache(s, self, self.file_hash.activity_journal.start,

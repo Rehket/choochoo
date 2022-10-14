@@ -70,12 +70,16 @@ class Configure:
 
     def read_profiles(self, request, s):
         fn_argspec_by_name = get_profiles()
-        data = {PROFILES: {name: self.html(fn_argspec_by_name[name][0].__doc__) for name in fn_argspec_by_name},
-                CONFIGURED: not bool(self.__config.db.no_data()),
-                BUSY: self.is_busy(),
-                VERSION: DB_VERSION,
-                DIRECTORY: self.__config.args[BASE]}
-        return data
+        return {
+            PROFILES: {
+                name: self.html(fn_argspec_by_name[name][0].__doc__)
+                for name in fn_argspec_by_name
+            },
+            CONFIGURED: not bool(self.__config.db.no_data()),
+            BUSY: self.is_busy(),
+            VERSION: DB_VERSION,
+            DIRECTORY: self.__config.args[BASE],
+        }
 
     def write_profile(self, request, s):
         data = request.json
@@ -129,10 +133,9 @@ class Configure:
         if constant.validate_cls:
             value = dumps(value)
         time = data[VALUES][0][TIME]
-        statistic_journal_id = data[VALUES][0][STATISTIC]
-        if statistic_journal_id:
+        if statistic_journal_id := data[VALUES][0][STATISTIC]:
             journal = s.query(StatisticJournal). \
-                filter(StatisticJournal.id == statistic_journal_id,
+                    filter(StatisticJournal.id == statistic_journal_id,
                        StatisticJournal.source_id == constant.id).one()
             journal.value = value
             if not constant.single:

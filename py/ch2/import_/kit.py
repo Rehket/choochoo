@@ -63,12 +63,22 @@ def copy_statistics(record, old_s, old, old_source, new_s, new_source):
     statistic_journal = old.meta.tables['statistic_journal']
     statistic_journal_timestamp = old.meta.tables['statistic_journal_timestamp']
     for title in (T.KIT_ADDED, T.KIT_RETIRED):
-        old_timestamp = old_s.query(statistic_journal). \
-            join(statistic_journal_timestamp, statistic_journal.c.id == statistic_journal_timestamp.c.id). \
-            join(statistic_name, statistic_journal.c.statistic_name_id == statistic_name.c.id). \
-            filter(statistic_name.c.name.ilike(simple_name(title)),
-                   statistic_journal.c.source_id == old_source.id).one_or_none()
-        if old_timestamp:
+        if (
+            old_timestamp := old_s.query(statistic_journal)
+            .join(
+                statistic_journal_timestamp,
+                statistic_journal.c.id == statistic_journal_timestamp.c.id,
+            )
+            .join(
+                statistic_name,
+                statistic_journal.c.statistic_name_id == statistic_name.c.id,
+            )
+            .filter(
+                statistic_name.c.name.ilike(simple_name(title)),
+                statistic_journal.c.source_id == old_source.id,
+            )
+            .one_or_none()
+        ):
             new_statistic_name = StatisticName.add_if_missing(new_s, title, StatisticJournalType.TIMESTAMP,
                                                               None, None, type(new_source))
             # to_time for sqlite

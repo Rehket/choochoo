@@ -29,9 +29,8 @@ class SystemConstant(Base):
         if instance is None:
             if not none:
                 raise Exception(f'No value for {name}')
-            else:
-                log.debug(f'Read {name}=None')
-                return None
+            log.debug(f'Read {name}=None')
+            return None
         else:
             log.debug(f'Read {name}={instance.value}')
             return instance.value

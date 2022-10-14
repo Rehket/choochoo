@@ -7,16 +7,18 @@ def col_to_boxstats(frame, name):
     Allow inter-op with matplotlib using pre-calculated stats
     See test_data.py
     '''
-    stats = []
-    for index, row in frame.iterrows():
-        if row[name]:
-            stats.append({'label': index,
-                          'whislo': row[name][0],
-                          'q1': row[name][1],
-                          'med': row[name][2],
-                          'q3': row[name][3],
-                          'whishi': row[name][4]})
-    return stats
+    return [
+        {
+            'label': index,
+            'whislo': row[name][0],
+            'q1': row[name][1],
+            'med': row[name][2],
+            'q3': row[name][3],
+            'whishi': row[name][4],
+        }
+        for index, row in frame.iterrows()
+        if row[name]
+    ]
 
 
 def box_plot(f, col):

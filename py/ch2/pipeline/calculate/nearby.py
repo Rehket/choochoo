@@ -108,10 +108,10 @@ class SimilarityCalculator(RerunWhenNewActivitiesMixin, ProcessCalculator):
     def _aj_lon_lat(self, s, new=True):
         from ..owners import ActivityReader
         lat = s.query(StatisticName.id). \
-            filter(StatisticName.name == N.LATITUDE,
+                filter(StatisticName.name == N.LATITUDE,
                    StatisticName.owner == ActivityReader).scalar()
         lon = s.query(StatisticName.id). \
-            filter(StatisticName.name == N.LONGITUDE,
+                filter(StatisticName.name == N.LONGITUDE,
                    StatisticName.owner == ActivityReader).scalar()
         if not lat or not lon:
             log.warning(f'No {N.LATITUDE} or {N.LONGITUDE} in database')
@@ -131,8 +131,8 @@ class SimilarityCalculator(RerunWhenNewActivitiesMixin, ProcessCalculator):
 
         # todo - has not been tuned for latest schema
         stmt = select([sj_lat.c.source_id, sjf_lon.c.value, sjf_lat.c.value]). \
-            select_from(sj_lat).select_from(sj_lon).select_from(sjf_lat).select_from(sjf_lat).select_from(aj). \
-            where(and_(sj_lat.c.source_id == sj_lon.c.source_id,  # same source
+                select_from(sj_lat).select_from(sj_lon).select_from(sjf_lat).select_from(sjf_lat).select_from(aj). \
+                where(and_(sj_lat.c.source_id == sj_lon.c.source_id,  # same source
                        sj_lat.c.time == sj_lon.c.time,            # same time
                        sj_lat.c.source_id == aj.c.id,             # and associated with an activity
                        sj_lat.c.id == sjf_lat.c.id,               # lat sub-class
@@ -148,17 +148,23 @@ class SimilarityCalculator(RerunWhenNewActivitiesMixin, ProcessCalculator):
         yield from s.connection().execute(stmt)
 
     def _save(self, s, new_ids, affected_ids, n_points, n_overlaps, delta):
-        distances = dict((s.source.id, s.value)
-                         for s in s.query(StatisticJournalFloat).
-                         join(StatisticName).
-                         filter(StatisticName.name == N.ACTIVE_DISTANCE,
-                                StatisticName.owner == self.owner_in).all())  # todo - another owner
+        distances = {
+            s.source.id: s.value
+            for s in s.query(StatisticJournalFloat)
+            .join(StatisticName)
+            .filter(
+                StatisticName.name == N.ACTIVE_DISTANCE,
+                StatisticName.owner == self.owner_in,
+            )
+            .all()
+        }
+
         n = 0
         for lo in affected_ids:
             add_lo, d_lo = lo in new_ids, distances.get(lo, None)
             if d_lo:
                 for hi in (id for id in affected_ids if id > lo):
-                    d_hi = distances.get(hi, None)
+                    d_hi = distances.get(hi)
                     if d_hi and (add_lo or hi in new_ids):
                         if lo in new_ids and hi not in new_ids:
                             # hi already existed so was added first
@@ -194,14 +200,35 @@ class NearbySimilarityDBSCAN(DBSCAN):
         if not self.__max_similarity: raise Exception('All activities unconnected')
 
     def run(self):
-        candidates = set(x[0] for x in
-                         self.__s.query(distinct(ActivitySimilarity.activity_journal_lo_id)).
-                         join(ActivityJournal, ActivityJournal.id == ActivitySimilarity.activity_journal_lo_id).
-                         filter(ActivityJournal.activity_group == self.__activity_group).all())
-        candidates = candidates.union(set(x[0] for x in
-                         self.__s.query(distinct(ActivitySimilarity.activity_journal_hi_id)).
-                         join(ActivityJournal, ActivityJournal.id == ActivitySimilarity.activity_journal_hi_id).
-                         filter(ActivityJournal.activity_group == self.__activity_group).all()))
+        candidates = {
+            x[0]
+            for x in self.__s.query(
+                distinct(ActivitySimilarity.activity_journal_lo_id)
+            )
+            .join(
+                ActivityJournal,
+                ActivityJournal.id == ActivitySimilarity.activity_journal_lo_id,
+            )
+            .filter(ActivityJournal.activity_group == self.__activity_group)
+            .all()
+        }
+
+        candidates = candidates.union(
+            {
+                x[0]
+                for x in self.__s.query(
+                    distinct(ActivitySimilarity.activity_journal_hi_id)
+                )
+                .join(
+                    ActivityJournal,
+                    ActivityJournal.id
+                    == ActivitySimilarity.activity_journal_hi_id,
+                )
+                .filter(ActivityJournal.activity_group == self.__activity_group)
+                .all()
+            }
+        )
+
         candidates = sorted(candidates)
         # shuffle(candidates)  # skip for repeatability
         return super().run(candidates)

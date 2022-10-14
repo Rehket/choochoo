@@ -41,7 +41,7 @@ def activity_details(local_time, activity_group):
         by_name(ActivityCalculator, N.ACTIVE_TIME, N.ACTIVE_DISTANCE). \
         with_.copy_with_units().df.append(climbs)
 
-    f'''
+    '''
     ## Activity Plots
     
     To the right of each plot of data against distance is a related plot of cumulative data
@@ -51,6 +51,7 @@ def activity_details(local_time, activity_group):
     
     Plot tools support zoom, dragging, etc.
     '''
+
 
     output_file(filename='/dev/null')
 

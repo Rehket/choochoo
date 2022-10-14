@@ -23,7 +23,7 @@ class Week(Assert, ORMUtils):
         self.__name = name
         self.__description = description
         self.__start = to_date(start)
-        self.__days = dict((key.lower(), value) for key, value in days.items())
+        self.__days = {key.lower(): value for key, value in days.items()}
         self.__n_weeks = max(len(day) for day in self.__days.values())
         self.__validate()
 
@@ -34,7 +34,7 @@ class Week(Assert, ORMUtils):
         self._assert(self.__days, 'No days')
         self._assert(self.__n_weeks, 'No notes defined in days')
         for key, day in self.__days.items():
-            self._assert(key in DOW, 'Bad day: %s' % key)
+            self._assert(key in DOW, f'Bad day: {key}')
             self._assert(len(day) == 0 or self.__n_weeks == len(day),
                          'Day %s of unusual length (%d/%d)' % (key, self.__n_weeks, len(day)))
 
@@ -70,7 +70,7 @@ class Day(Assert):
 
     def __init__(self, name=None, notes=None):
         self.__name = name
-        self.__notes = notes if notes else []
+        self.__notes = notes or []
         self._assert(self.__name, 'No name')
 
     def __len__(self):
@@ -78,7 +78,7 @@ class Day(Assert):
 
     def create(self, s, parent, sort, date, n_weeks):
         dow = date.weekday()
-        schedule = Schedule('%s/w[%s]' % (format_date(date), DOW[dow]))
+        schedule = Schedule(f'{format_date(date)}/w[{DOW[dow]}]')
         schedule.start = date
         schedule.finish = date + dt.timedelta(days=7 * n_weeks)
         child = DiaryTopic(parent=parent, schedule=schedule, title=self.__name, sort=sort)

@@ -87,10 +87,7 @@ def do_search(db, words, cmd=ACTIVITIES, show=None, set=None):
             conversion = activity_conversion
         else:
             query = ' '.join(words)
-            if cmd == ACTIVITIES:
-                conversion = activity_conversion
-            else:
-                conversion = None
+            conversion = activity_conversion if cmd == ACTIVITIES else None
         results = constrained_sources(s, query, conversion=conversion)
         process_results(s, results, show=show, set=set, activity=bool(conversion))
         return results  # for tests
@@ -159,6 +156,7 @@ def set_results(s, sources, set, activity):
 
 
 def drop_quotes(value):
-    if len(value) > 1 and value[0] == '"' and value[-1] == '"': value = value[1:-1]
-    elif len(value) > 1 and value[0] == "'" and value[-1] == "'": value = value[1:-1]
+    if len(value) > 1:
+        if value[0] == '"' and value[-1] == '"': value = value[1:-1]
+        elif value[0] == "'" and value[-1] == "'": value = value[1:-1]
     return value

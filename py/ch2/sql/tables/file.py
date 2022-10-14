@@ -21,10 +21,9 @@ class FileHash(Base):
 
     @classmethod
     def get_or_add(cls, s, hash):
-        instance = s.query(FileHash).filter(FileHash.hash == hash).one_or_none()
-        if not instance:
-            instance = add(s, FileHash(hash=hash))
-        return instance
+        return s.query(FileHash).filter(
+            FileHash.hash == hash
+        ).one_or_none() or add(s, FileHash(hash=hash))
 
 
 class FileScan(Base):

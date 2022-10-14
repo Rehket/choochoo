@@ -31,7 +31,7 @@ def to_csv(model, format, children):
     displayed = False
     for child in all_children:
         for child_line in to_csv(child, format, children):
-            yield parent_line + ',' + child_line
+            yield f'{parent_line},{child_line}'
             displayed = True
     if not displayed:
         yield parent_line

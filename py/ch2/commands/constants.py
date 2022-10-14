@@ -75,9 +75,10 @@ In such a case "entry" in the descriptions above may refer to multiple entries.
                 if cmd == SET:
                     set_constants(s, constants, date, args[VALUE], args[FORCE])
                 elif cmd == UNSET:
-                    if not date and not args[FORCE]:
+                    if date or args[FORCE]:
+                        delete_constants(s, constants, date)
+                    else:
                         raise Exception(f'Use {mm(FORCE)} to delete all entries for a Constant')
-                    delete_constants(s, constants, date)
                 elif cmd in (SHOW, LIST):
                     print_constants(s, constants, name, date, names_only=(cmd == LIST))
 
@@ -85,11 +86,13 @@ In such a case "entry" in the descriptions above may refer to multiple entries.
 def constants_like(s, name):
     constants = s.query(Constant).filter(Constant.name.like(name)).order_by(Constant.name).all()
     if not constants:
-        all_constants = s.query(Constant).all()
-        if all_constants:
+        if all_constants := s.query(Constant).all():
             log.info('Available constants:')
             for constants in all_constants:
-                log.info('%s - %s' % (constants.statistic_name.name, constants.statistic_name.description))
+                log.info(
+                    f'{constants.statistic_name.name} - {constants.statistic_name.description}'
+                )
+
         else:
             log.error('No constants defined - configure system correctly')
         raise Exception('Constant "%s" is not defined' % name)
@@ -142,9 +145,8 @@ def delete_constants(s, constants, date):
                 if repeat:
                     log.info(f'Deleting {constant.name} on {journal.time}')
                     s.delete(journal)
-                else:
-                    if not journal:
-                        raise Exception(f'No entry for {constant.name} on {date}')
+                elif not journal:
+                    raise Exception(f'No entry for {constant.name} on {date}')
     else:
         for constant in constants:
             for journal in journal_for_constant(s, constant):
@@ -155,15 +157,14 @@ def delete_constants(s, constants, date):
 def print_constants(s, constants, name, date, names_only=False):
     if not constants:
         constants = s.query(Constant).order_by(Constant.name).all()
-        if not constants:
-            raise Exception('No Constants defined - configure system')
+    if not constants:
+        raise Exception('No Constants defined - configure system')
     print()
     for constant in constants:
         if not date:
             print(f'{constant.name}')
             if not names_only:
-                description = constant.statistic_name.description \
-                    if constant.statistic_name.description else '[no description]'
+                description = constant.statistic_name.description or '[no description]'
                 Markdown().print(description)
                 if name:  # only print values if we're not listing all
                     found = False
@@ -175,12 +176,10 @@ def print_constants(s, constants, name, date, names_only=False):
                     if not found:
                         log.warning(f'No values found for {constant.name}')
                 print()
+        elif journal := constant.at(s, date=date):
+            print(f'{constant.name} {journal.source.time} {journal.value}')
         else:
-            journal = constant.at(s, date=date)
-            if journal:
-                print(f'{constant.name} {journal.source.time} {journal.value}')
-            else:
-                log.warning(f'No values found for {constant.name}')
+            log.warning(f'No values found for {constant.name}')
 
 
 def remove_constants(s, constants):
@@ -191,9 +190,8 @@ def remove_constants(s, constants):
                 # note - we do not remove the statistic name since it could be shared across multiple constants
                 # for different activity groups (but we have ensured no journal entries exist)
                 s.query(Constant).filter(Constant.id == constant.id).delete()
-            else:
-                if journal_for_constant(s, constant):
-                    raise Exception(f'Values still defined for {constant.name}')
+            elif journal_for_constant(s, constant):
+                raise Exception(f'Values still defined for {constant.name}')
 
 
 def journal_join_constant(s, constant):

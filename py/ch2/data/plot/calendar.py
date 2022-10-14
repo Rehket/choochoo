@@ -96,8 +96,11 @@ class Calendar:
 
     @staticmethod
     def _set_xy(df, start, finish, border_day, border_month, delta_year):
-        offset = dict((y, dt.date(year=y, month=1, day=1).weekday() - 1)
-                      for y in range(start.year, finish.year+1))
+        offset = {
+            y: dt.date(year=y, month=1, day=1).weekday() - 1
+            for y in range(start.year, finish.year + 1)
+        }
+
         df.loc[:, CALENDAR_WEEK] = df.index.map(lambda index: (index.dayofyear + offset[index.year]) // 7)
         df.loc[:, CALENDAR_X] = df[CALENDAR_WEEK] * (1 + border_day) + df.index.month * border_month
         df.loc[:, CALENDAR_Y] = -1 * (df.index.dayofweek * (1 + border_day) +
@@ -122,7 +125,14 @@ class Calendar:
     def _build_tools(df, hover, not_hover, all_hover):
         tools = [SaveTool()]
         if hover is None:
-            hover = [col for col in df.columns if all_hover or (not col.startswith(CALENDAR) and not col in not_hover)]
+            hover = [
+                col
+                for col in df.columns
+                if all_hover
+                or not col.startswith(CALENDAR)
+                and col not in not_hover
+            ]
+
         if hover:
             # names ensures that background has no hover
             tools.append(HoverTool(tooltips=[tooltip(col) for col in hover], names=['with_hover']))
@@ -254,16 +264,14 @@ def _edge(linear, x, y, r):
     d = 2 * r * (linear - int(linear))
     if linear < 1: return x + r - d, y + r
     if linear < 2: return x - r, y + r - d
-    if linear < 3: return x - r + d, y - r
-    return x + r, y - r + d
+    return (x - r + d, y - r) if linear < 3 else (x + r, y - r + d)
 
 
 def _corner(linear, x, y, r):
     if is_nan(linear): return x, y
     if linear < 1: return x + r, y + r
     if linear < 2: return x - r, y + r
-    if linear < 3: return x - r, y - r
-    return x + r, y - r
+    return (x - r, y - r) if linear < 3 else (x + r, y - r)
 
 
 def _line_corners(x, y, r, start, end):

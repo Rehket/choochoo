@@ -61,8 +61,7 @@ class TestFit(LogTestCase, OutputMixin):
     def test_personal(self):
         for fit_file in glob(join(self.test_dir, 'source/personal/*.fit')):
             file_name = basename(fit_file)
-            with self.assertTextMatch(
-                    join(self.test_dir, 'target/personal/TestFit.test_personal:' + file_name)) as output:
+            with self.assertTextMatch(join(self.test_dir, f'target/personal/TestFit.test_personal:{file_name}')) as output:
                 summarize_tables(read_fit(fit_file), width=80, output=output,
                                  profile_path=self.profile_path)
 
@@ -92,12 +91,12 @@ class TestFit(LogTestCase, OutputMixin):
                 if exists(source_csv_path):
                     self.standard_csv(source_fit_path, source_csv_path, filters=filters)
                 else:
-                    log.warning('Could not find %s' % source_csv_path)
+                    log.warning(f'Could not find {source_csv_path}')
                 target_csv_path = sub_dir(source_csv_path, 'target', 2)
                 if exists(target_csv_path):
                     self.standard_csv(source_fit_path, target_csv_path, filters=filters)
                 else:
-                    log.warning('Could not find %s' % target_csv_path)
+                    log.warning(f'Could not find {target_csv_path}')
 
     def standard_dmp(self, source, target, format, filters=None):
         with self.assertTextMatch(target, filters=filters) as output:
@@ -170,7 +169,7 @@ class TestFit(LogTestCase, OutputMixin):
             if record.name == 'record':
                 positions.append((record.data[LAT][0], record.data[LONG][0]))
 
-        print('Read %s positions' % len(positions))
+        print(f'Read {len(positions)} positions')
 
         self.assertAlmostEqual(positions[0][0], -33.42, places=1)
         self.assertAlmostEqual(positions[0][1], -70.61, places=1)

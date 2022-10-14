@@ -127,17 +127,11 @@ PP = PrettyPrinter(indent=0, depth=1, width=80, compact=True)
 def short_str(x):
     text = PP.pformat(x)
     lines = text.splitlines(False)
-    if len(lines) > 1:
-        return lines[0][:20] + '...' + lines[-1][-20:]
-    else:
-        return text
+    return f'{lines[0][:20]}...{lines[-1][-20:]}' if len(lines) > 1 else text
 
 
 def format_metres(dist):
-    if dist < 1000:
-        return str(int(dist)) + U.M
-    else:
-        return format_km(dist / 1000)
+    return str(int(dist)) + U.M if dist < 1000 else format_km(dist / 1000)
 
 
 def format_km(dist):
@@ -145,10 +139,7 @@ def format_km(dist):
 
 
 def format_percent(pc):
-    if pc > 0.5:
-        return f'{pc:.1f}{U.PC}'
-    else:
-        return f'{pc:.2f}{U.PC}'
+    return f'{pc:.1f}{U.PC}' if pc > 0.5 else f'{pc:.2f}{U.PC}'
 
 
 def format_watts(power):
@@ -170,23 +161,14 @@ def group_to_dict(iterable):
 
 def drop_trailing_slash(path):
     left, right = split(path)
-    if not right:
-        return left
-    else:
-        return path
+    return path if right else left
 
 
 def inside_interval(lo, value, hi):
     if lo is None:
-        if hi is None:
-            return True
-        else:
-            return value < hi
+        return True if hi is None else value < hi
     else:
-        if hi is None:
-            return lo <= value
-        else:
-            return lo <= value < hi
+        return lo <= value if hi is None else lo <= value < hi
 
 
 def restart_self():
@@ -235,10 +217,7 @@ def timing(label, warn_over=None):
 
 
 def clean(token, none=False):
-    if token is None and none:
-        return None
-    else:
-        return token.strip().lower()
+    return None if token is None and none else token.strip().lower()
 
 
 def insert(generator, index, extra):
@@ -249,7 +228,4 @@ def insert(generator, index, extra):
 
 
 def str_or_none(value):
-    if value is None:
-        return value
-    else:
-        return str(value)
+    return value if value is None else str(value)

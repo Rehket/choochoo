@@ -68,15 +68,12 @@ def ROUND_DISTANCE(data):
 
 def sub_extn(path, extn):
     dir, file = split(path)
-    return join(dir, '%s.%s' % (file.rsplit('.', 1)[0], extn))
+    return join(dir, f"{file.rsplit('.', 1)[0]}.{extn}")
 
 
 def sub_dir(path, new_dir, offset):
     a, b = split(path)
-    if offset:
-        return join(sub_dir(a, new_dir, offset-1), b)
-    else:
-        return join(a, new_dir)
+    return join(sub_dir(a, new_dir, offset-1), b) if offset else join(a, new_dir)
 
 
 class BaseBufferContext(AbstractContextManager):
@@ -120,17 +117,18 @@ class TextEqualContext(TextBufferContext):
         self._test = test
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if not exc_type:
-            with open(self._path, 'r') as input:
-                target = input.read()
-                result = self._filter(self._buffer.getvalue())
-                if result != target:
-                    with NamedTemporaryFile(delete=False) as f:
-                        f.write(result.encode())
-                        self._log.warning('Wrote copy of result to %s' % f.name)
-                        self._log.warning('Comparing with %s' % self._path)
-                        self._log.warning('diff %s %s' % (f.name, self._path))
-                self._test.assertEqual(result, target)
+        if exc_type:
+            return
+        with open(self._path, 'r') as input:
+            target = input.read()
+            result = self._filter(self._buffer.getvalue())
+            if result != target:
+                with NamedTemporaryFile(delete=False) as f:
+                    f.write(result.encode())
+                    self._log.warning(f'Wrote copy of result to {f.name}')
+                    self._log.warning(f'Comparing with {self._path}')
+                    self._log.warning(f'diff {f.name} {self._path}')
+            self._test.assertEqual(result, target)
 
 
 class BinaryEqualContext(BinaryBufferContext):
@@ -140,24 +138,25 @@ class BinaryEqualContext(BinaryBufferContext):
         self._test = test
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if not exc_type:
-            with open(self._path, 'rb') as input:
-                target = input.read()
-                result = self._filter(self._buffer.getvalue())
-                if result != target:
-                    with NamedTemporaryFile(delete=False) as f:
-                        f.write(result)
-                        self._log.warning('Wrote copy of result to %s' % f.name)
-                        self._log.warning('Comparing with %s' % self._path)
-                        self._log.warning('cmp -l %s %s' % (f.name, self._path))
-                self._test.assertEqual(result, target)
+        if exc_type:
+            return
+        with open(self._path, 'rb') as input:
+            target = input.read()
+            result = self._filter(self._buffer.getvalue())
+            if result != target:
+                with NamedTemporaryFile(delete=False) as f:
+                    f.write(result)
+                    self._log.warning(f'Wrote copy of result to {f.name}')
+                    self._log.warning(f'Comparing with {self._path}')
+                    self._log.warning(f'cmp -l {f.name} {self._path}')
+            self._test.assertEqual(result, target)
 
 
 class TextDumpContext(TextBufferContext):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type:
-            self._log.warning('Error writing %s' % self._path)
+            self._log.warning(f'Error writing {self._path}')
         else:
             makedirs(dirname(self._path), exist_ok=True)
             with open(self._path, 'w') as output:
@@ -169,7 +168,7 @@ class BinaryDumpContext(BinaryBufferContext):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type:
-            self._log.warning('Error writing %s' % self._path)
+            self._log.warning(f'Error writing {self._path}')
         else:
             makedirs(dirname(self._path), exist_ok=True)
             with open(self._path, 'wb') as output:
@@ -194,7 +193,10 @@ class CSVEqualContext(TextBufferContext):
                     self.compare_rows(row, us_row, them_row, us_data)
 
     def build_dict(self, row):
-        return dict((name, (value, units)) for name, value, units in grouper(row, 3, fillvalue=None))
+        return {
+            name: (value, units)
+            for name, value, units in grouper(row, 3, fillvalue=None)
+        }
 
     def compare_rows(self, row, us_row, them_row, us_data):
         if us_row[0] == 'CompressedTimestamp': us_row[0] = 'Data'
@@ -229,8 +231,8 @@ class CSVEqualContext(TextBufferContext):
     def dump(self, row, us_data):
         with NamedTemporaryFile(delete=False) as f:
             f.write(us_data.encode())
-            self._log.warning('Wrote copy of CSV to %s' % f.name)
-            self._log.warning('Comparing with %s' % self._path)
+            self._log.warning(f'Wrote copy of CSV to {f.name}')
+            self._log.warning(f'Comparing with {self._path}')
             self._log.warning('head -n %d %s | tail -n 1; head -n %d %s | tail -n 1' %
                            (row+2, f.name, row+2, self._path))
 
@@ -251,17 +253,15 @@ class OutputMixin:
         log = self._resolve_log(log)
         if exists(path):
             return TextEqualContext(log, path, filters, self)
-        else:
-            log.warning('File "%s" does not exist; will generate rather than check' % path)
-            return TextDumpContext(log, path, filters)
+        log.warning('File "%s" does not exist; will generate rather than check' % path)
+        return TextDumpContext(log, path, filters)
 
     def assertBinaryMatch(self, path, log=None, filters=None):
         log = self._resolve_log(log)
         if exists(path):
             return BinaryEqualContext(log, path, filters, self)
-        else:
-            log.warning('File "%s" does not exist; will generate rather than check' % path)
-            return BinaryDumpContext(log, path, filters)
+        log.warning('File "%s" does not exist; will generate rather than check' % path)
+        return BinaryDumpContext(log, path, filters)
 
     def assertCSVMatch(self, path, log=None, filters=None):
         log = self._resolve_log(log)
@@ -269,4 +269,4 @@ class OutputMixin:
             return CSVEqualContext(log, path, filters, self)
         else:
             # the CSV file should have been generated using the SDK (dev/build-csv.sh)
-            raise Exception('Could not open %s' % path)
+            raise Exception(f'Could not open {path}')

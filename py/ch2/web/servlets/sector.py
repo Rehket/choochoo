@@ -53,10 +53,13 @@ class Sector(ContentType):
         return {'sector': sector.id}
 
     def _read_activity_route_wkb(self, s, activity_journal_id):
-        q = text(f'''
+        q = text(
+            '''
 select st_force2d(aj.route_et::geometry)
   from activity_journal as aj
- where aj.id = :activity_journal_id''')
+ where aj.id = :activity_journal_id'''
+        )
+
         return WKBElement(s.connection().execute(q, activity_journal_id=activity_journal_id).fetchone()[0])
 
     def read_sector_journals(self, request, s, sector):
@@ -174,5 +177,6 @@ select st_x((point).geom) as x, st_y((point).geom) as y, st_z((point).geom) as {
         log.debug(sql)
         df_et = pd.read_sql(sql, s.connection(),
                             params={'sector_journal_id': sector_journal_id})
-        df = pd.merge(df_et, df_d, how='left', left_on=['x', 'y'], right_on=['x', 'y']).dropna()
-        return df
+        return pd.merge(
+            df_et, df_d, how='left', left_on=['x', 'y'], right_on=['x', 'y']
+        ).dropna()

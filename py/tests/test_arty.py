@@ -96,7 +96,7 @@ class TestArty(LogTestCase):
         return [(x, y), (x + dx, y + dy)]
 
     def gen_random(self, n, size=100):
-        for i in range(n):
+        for _ in range(n):
             yield 1, self.random_box(n, size=size)
 
     def test_equals(self, ):
@@ -145,7 +145,7 @@ class TestArty(LogTestCase):
         self.assertFalse(tree)
 
     def best_bug(self, tree):
-        for i, (value, box) in enumerate(self.gen_random(100)):
+        for value, box in self.gen_random(100):
             tree.add(box, value % 10)
             tree.assert_consistent()
 
@@ -165,10 +165,9 @@ class TestArty(LogTestCase):
             if check:
                 tree.assert_consistent()
 
-        for i in range(10):
-
+        for _ in range(10):
             n_delete = randrange(int(1.1 * n_data))   # delete to empty 10% of time
-            for j in range(n_delete):
+            for _ in range(n_delete):
                 if data:
                     index = randrange(len(data))
                     value, box = data[index]
@@ -186,13 +185,13 @@ class TestArty(LogTestCase):
                 if check:
                     tree.assert_consistent()
 
-            for j in range(n_data // 4):
+            for _ in range(n_data // 4):
                 for match in range(4):
                     list(tree.get(self.random_box(10, 100), match=MatchType(match)))
 
     def test_stress(self):
         for type in CLRTree, CQRTree, CERTree:
-            print('type %s' % type)
+            print(f'type {type}')
             for n_children in 3, 4, 10:
                 print('n_children %d' % n_children)
                 for n_data in 1, 2, 3, 100:
@@ -251,7 +250,7 @@ class TestArty(LogTestCase):
         seed(1)
         data = list(self.gen_random(n_data, size=dim))
         start = time()
-        for i in range(n_loops):
+        for _ in range(n_loops):
             for value, box in data:
                 tree[box] = value
             assert len(tree) == len(data), len(tree)

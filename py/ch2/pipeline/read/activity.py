@@ -37,7 +37,11 @@ class ActivityReader(LoaderMixin, ProcessFitReader):
         self.record_to_db = [(field, title, units, STATISTIC_JOURNAL_CLASSES[type])
                              for field, (title, units, type)
                              in self._assert('record_to_db', record_to_db).items()]
-        self.add_elevation = not any(title == T.ELEVATION for (field, title, units, type) in self.record_to_db)
+        self.add_elevation = all(
+            title != T.ELEVATION
+            for (field, title, units, type) in self.record_to_db
+        )
+
         self.__ajournal = None  # save for coverage
         super().__init__(*args, sub_dir=ACTIVITY, **kargs)
 
@@ -66,19 +70,22 @@ class ActivityReader(LoaderMixin, ProcessFitReader):
         _, kit = split_fit_path(path)
         if kit:
             return kit
-        else:
-            log.debug(f'No {N.KIT} in {path}')
-            return None
+        log.debug(f'No {N.KIT} in {path}')
+        return None
 
     @staticmethod
     def _read_device(records):
-        for record in records:
-            if record.name == 'device_info' and 'garmin_product' in record.data:
-                return record.value.garmin_product
-        return None
+        return next(
+            (
+                record.value.garmin_product
+                for record in records
+                if record.name == 'device_info' and 'garmin_product' in record.data
+            ),
+            None,
+        )
 
     def _read_data(self, s, file_scan):
-        log.info('Reading activity data from %s' % file_scan)
+        log.info(f'Reading activity data from {file_scan}')
         records = self.parse_records(read_fit(file_scan.path))
         kit = self._read_kit(file_scan.path)
         device = self._read_device(records)
@@ -139,11 +146,10 @@ class ActivityReader(LoaderMixin, ProcessFitReader):
     def _lookup_activity_group(self, s, name):
         activity_group = ActivityGroup.from_name(s, name)
         if not activity_group:
-            activities = s.query(ActivityGroup).all()
-            if activities:
+            if activities := s.query(ActivityGroup).all():
                 log.info('Available activity group:')
                 for activity_group in activities:
-                    log.info('%s - %s' % (activity_group.name, activity_group.description))
+                    log.info(f'{activity_group.name} - {activity_group.description}')
             else:
                 log.error('No activity groups defined - configure system correctly')
             raise Exception('ActivityGroup "%s" is not defined' % name)
@@ -156,14 +162,14 @@ class ActivityReader(LoaderMixin, ProcessFitReader):
         # first, do we have the 'Name' field defined?
         # this should be triggered at most once per group if it was not already defined
         root = s.query(ActivityTopic). \
-            filter(ActivityTopic.title == ActivityTopic.ROOT,
+                filter(ActivityTopic.title == ActivityTopic.ROOT,
                    ActivityTopic.activity_group == ajournal.activity_group).one_or_none()
         if not root:
             root = add(s, ActivityTopic(title=ActivityTopic.ROOT, description=ActivityTopic.ROOT_DESCRIPTION,
                                         activity_group=ajournal.activity_group))
         if not s.query(ActivityTopicField). \
-                join(StatisticName). \
-                filter(StatisticName.name == N.NAME,
+                    join(StatisticName). \
+                    filter(StatisticName.name == N.NAME,
                        StatisticName.owner == ActivityTopic,
                        ActivityTopicField.activity_topic == root).one_or_none():
            add_activity_topic_field(s, root, T.NAME, -10, StatisticJournalType.TEXT,
@@ -171,15 +177,15 @@ class ActivityReader(LoaderMixin, ProcessFitReader):
                                      description=ActivityTopicField.NAME_DESCRIPTION)
         # second, do we already have a journal for this file, or do we need to add one?
         source = s.query(ActivityTopicJournal). \
-            filter(ActivityTopicJournal.file_hash_id == file_scan.file_hash_id). \
-            one_or_none()
+                filter(ActivityTopicJournal.file_hash_id == file_scan.file_hash_id). \
+                one_or_none()
         if not source:
             source = add(s, ActivityTopicJournal(file_hash_id=file_scan.file_hash_id,
                                                  activity_group=ajournal.activity_group))
         # and third, does that journal contain a name?
         if not s.query(StatisticJournal). \
-                join(StatisticName). \
-                filter(StatisticJournal.source == source,
+                    join(StatisticName). \
+                    filter(StatisticJournal.source == source,
                        StatisticName.owner == ActivityTopic,
                        StatisticName.name == N.NAME).one_or_none():
             value = splitext(basename(file_scan.path))[0]
@@ -256,8 +262,10 @@ class ActivityReader(LoaderMixin, ProcessFitReader):
                             if elevation:
                                 loader.add_data(N.SRTM1_ELEVATION, ajournal, elevation, timestamp)
                 else:
-                    log.warning('Ignoring duplicate record data for %s at %s - some data may be missing' %
-                                (file_scan.path, record.value.timestamp))
+                    log.warning(
+                        f'Ignoring duplicate record data for {file_scan.path} at {record.value.timestamp} - some data may be missing'
+                    )
+
                 last_timestamp = record.value.timestamp
                 if not have_timespan:
                     ajournal.finish = record.value.timestamp

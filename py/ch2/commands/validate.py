@@ -34,7 +34,7 @@ def check_activity_diary_missing_files(record, db, fix=False):
                     join(StatisticJournal, StatisticJournal.source_id == ActivityTopicJournal.id). \
                     join(FileHash). \
                     outerjoin(FileScan). \
-                    filter(FileScan.path == None).all():
+                    filter(FileScan.path is None).all():
                 bad = True
                 record.warning(f'{ActivityTopicJournal.__table__} with file hash '
                                f'{topic_journal.file_hash.hash[:6]} has associated entries but no activity')

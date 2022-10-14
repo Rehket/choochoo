@@ -16,7 +16,7 @@ def import_activity(record, old, new):
         with old.session_context() as old_s:
             copy_activity_topic_fields(record, old_s, old, None, new, copied)
             activity_topic = old.meta.tables['activity_topic']
-            for old_activity_topic in old_s.query(activity_topic).filter(activity_topic.c.parent_id == None).all():
+            for old_activity_topic in old_s.query(activity_topic).filter(activity_topic.c.parent_id is None).all():
                 log.info(f'Found old (root) activity_topic {old_activity_topic}')
                 copy_activity_topic_fields(record, old_s, old, old_activity_topic, new, copied)
     else:
@@ -73,7 +73,7 @@ def copy_activity_topic_journal_entries(record, old_s, old, old_statistic_name, 
 
 
 def create_activity_topic_journal(record, old_s, old, old_activity_topic_journal, old_statistic_name, new_s):
-    log.debug(f'Trying to create activity_topic_journal')
+    log.debug('Trying to create activity_topic_journal')
     file_hash = old.meta.tables['file_hash']
     old_file_hash = old_s.query(file_hash). \
         filter(file_hash.c.id == old_activity_topic_journal.file_hash_id).one()

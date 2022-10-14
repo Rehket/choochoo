@@ -69,13 +69,12 @@ def open_files(paths):
     # use an iterator here to avoid opening too many files at once
     for path in paths:
         path = clean_path(path)
-        if exists(path):
-            name = basename(path)
-            log.debug(f'Reading {path}')
-            stream = open(path, 'rb')
-            yield {STREAM: stream, NAME: name, READ_PATH: path}
-        else:
+        if not exists(path):
             raise Exception(f'No file at {path}')
+        name = basename(path)
+        log.debug(f'Reading {path}')
+        stream = open(path, 'rb')
+        yield {STREAM: stream, NAME: name, READ_PATH: path}
 
 
 def check_items(s, items):
@@ -101,8 +100,7 @@ def hash_file(file):
 def check_path(file):
     path, name = file[WRITE_PATH], file[NAME]
     gpath, _ = split_fit_path(path)
-    match = glob(gpath)
-    if match:
+    if match := glob(gpath):
         touch(match[0])  # trigger re-processing
         raise SkipFile(f'A file already exists for {name} at {match[0]}')
     log.debug(f'File {name} cleared for path {path}')
@@ -124,9 +122,12 @@ def check_file(s, file):
 
 def _parse_records(data):
     types, messages, records = filtered_records(data)
-    return [record.as_dict(merge_duplicates, fix_degrees, unpack_single_bytes)
-            for _, _, record in sorted(records,
-                                       key=lambda r: r[2].timestamp if r[2].timestamp else to_time(0.0))]
+    return [
+        record.as_dict(merge_duplicates, fix_degrees, unpack_single_bytes)
+        for _, _, record in sorted(
+            records, key=lambda r: r[2].timestamp or to_time(0.0)
+        )
+    ]
 
 
 def _read_first_timestamp(path, records):
@@ -142,7 +143,7 @@ def parse_fit_data(file, items=None):
             file[TIME] = _read_first_timestamp(file[NAME], records)
             file[TYPE] = MONITOR
             # don't use '-' here or it will be treated as kit in path matching
-            file[EXTRA] = ':' + file[HASH][0:5]
+            file[EXTRA] = f':{file[HASH][:5]}'
             log.debug(f'File {file[NAME]} contains monitor data')
         except AbortImportButMarkScanned:
             records = ActivityReader.parse_records(file[DATA])

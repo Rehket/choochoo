@@ -11,13 +11,21 @@ YM = '%Y-%m'
 YMD = '%Y-%m-%d'
 HMS = '%H:%M:%S'
 HM = '%H:%M'
-YMD_HMS = YMD + ' ' + HMS
-YMDTHMS = YMD + 'T' + HMS
-YMD_HM = YMD + ' ' + HM
+YMD_HMS = f'{YMD} {HMS}'
+YMDTHMS = f'{YMD}T{HMS}'
+YMD_HM = f'{YMD} {HM}'
 
-ALL_DATE_FORMATS = ('%Y-%m-%dT%H:%M:%S.%f', '%Y-%m-%d %H:%M:%S.%f',
-                    YMDTHMS, YMD_HMS, YMD_HMS + '+00',
-                    '%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M', YMD, '%Y')
+ALL_DATE_FORMATS = (
+    '%Y-%m-%dT%H:%M:%S.%f',
+    '%Y-%m-%d %H:%M:%S.%f',
+    YMDTHMS,
+    YMD_HMS,
+    f'{YMD_HMS}+00',
+    '%Y-%m-%dT%H:%M',
+    '%Y-%m-%d %H:%M',
+    YMD,
+    '%Y',
+)
 
 
 def format_dateq(date):
@@ -113,36 +121,30 @@ def add_date(date, duration):
 
 def format_seconds(seconds):
     sign, seconds = '-' if seconds < 0 else '', abs(seconds)
-    if seconds >= 60:
-        minutes, seconds = seconds // 60, seconds % 60
-        if minutes >= 60:
-            hours, minutes = minutes // 60, minutes % 60
-            if hours >= 24:
-                days, hours = hours // 24, hours % 24
-                return '%s%dd %dh%02dm%02ds' % (sign, days, hours, minutes, seconds)
-            else:
-                return '%s%dh%02dm%02ds' % (sign, hours, minutes, seconds)
-        else:
-            return '%s%dm%02ds' % (sign, minutes, seconds)
-    else:
+    if seconds < 60:
         return '%s%ds' % (sign, seconds)
+    minutes, seconds = seconds // 60, seconds % 60
+    if minutes < 60:
+        return '%s%dm%02ds' % (sign, minutes, seconds)
+    hours, minutes = minutes // 60, minutes % 60
+    if hours < 24:
+        return '%s%dh%02dm%02ds' % (sign, hours, minutes, seconds)
+    days, hours = hours // 24, hours % 24
+    return '%s%dd %dh%02dm%02ds' % (sign, days, hours, minutes, seconds)
 
 
 def format_minutes(seconds):
     sign, seconds = '-' if seconds < 0 else '', abs(seconds)
-    if seconds >= 60:
-        minutes, seconds = seconds // 60, seconds % 60
-        if minutes >= 60:
-            hours, minutes = minutes // 60, minutes % 60
-            if hours >= 24:
-                days, hours = hours // 24, hours % 24
-                return '%s%dd %dh%02dm' % (sign, days, hours, minutes)
-            else:
-                return '%s%dh%02dm' % (sign, hours, minutes)
-        else:
-            return '%s%dm%02ds' % (sign, minutes, seconds)
-    else:
+    if seconds < 60:
         return '%s%ds' % (sign, seconds)
+    minutes, seconds = seconds // 60, seconds % 60
+    if minutes < 60:
+        return '%s%dm%02ds' % (sign, minutes, seconds)
+    hours, minutes = minutes // 60, minutes % 60
+    if hours < 24:
+        return '%s%dh%02dm' % (sign, hours, minutes)
+    days, hours = hours // 24, hours % 24
+    return '%s%dd %dh%02dm' % (sign, days, hours, minutes)
 
 
 # in general, dates are in the local timezone (because diary) while datetimes (referred to as "time")
@@ -180,12 +182,12 @@ def time_to_local_time(time, fmt=None, none=False):
     if none and time is None: return None
     if fmt:
         return time.astimezone(tz=None).strftime(fmt)
-    else:
-        local_time = time.astimezone(tz=None).strftime(YMD_HMS)
-        if local_time.endswith(' 00:00:00'):
-            return time.astimezone(tz=None).strftime(YMD)
-        else:
-            return local_time
+    local_time = time.astimezone(tz=None).strftime(YMD_HMS)
+    return (
+        time.astimezone(tz=None).strftime(YMD)
+        if local_time.endswith(' 00:00:00')
+        else local_time
+    )
 
 
 def is_local_time(time):
@@ -201,10 +203,7 @@ def local_time_or_now(date):
     convert a local date/time into a utc time, using current time as default
     (useful when user entering date on command line and omission defaults to now)
     '''
-    if date:
-        return local_time_to_time(date)
-    else:
-        return now()
+    return local_time_to_time(date) if date else now()
 
 
 def now():
@@ -224,17 +223,13 @@ def time_to_local_date(time):
 def min_time(a, b):
     if a is None:
         return b
-    if b is None:
-        return a
-    return min(a, b)
+    return a if b is None else min(a, b)
 
 
 def max_time(a, b):
     if a is None:
         return b
-    if b is None:
-        return a
-    return max(a, b)
+    return a if b is None else max(a, b)
 
 
 def extend_range(start, finish, time):
@@ -243,10 +238,7 @@ def extend_range(start, finish, time):
 
 def round_hour(time, up=True):
     down = time.replace(second=0, microsecond=0, minute=0)
-    if up and down < time:
-        return down + dt.timedelta(hours=1)
-    else:
-        return down
+    return down + dt.timedelta(hours=1) if up and down < time else down
 
 
 def datetime_to_epoch(datetime):

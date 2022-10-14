@@ -38,7 +38,7 @@ def long_cls(cls):
     if not isinstance(cls, str) and not isinstance(cls, type):
         cls = type(cls)
     if isinstance(cls, type):
-        cls = cls.__module__ + '.' + cls.__name__
+        cls = f'{cls.__module__}.{cls.__name__}'
     return cls
 
 
@@ -49,7 +49,7 @@ def lookup_cls(value):
     if value not in CLS_CACHE:
         CLS_CACHE[value] = locate(value)
     if not CLS_CACHE[value]:
-        raise Exception('Cannot find %s' % value)
+        raise Exception(f'Cannot find {value}')
     return CLS_CACHE[value]
 
 
@@ -123,9 +123,7 @@ class Sched(TypeDecorator):
 
     def process_result_value(self, value, dialect):
         from ..lib.schedule import Schedule
-        if value is None:
-            return None
-        return Schedule(value)
+        return None if value is None else Schedule(value)
 
 
 class OpenSched(Sched):
@@ -175,11 +173,10 @@ class QualifiedName(TypeDecorator):
     cache_ok = True
 
     def process_literal_param(self, value, dialect):
-        if value and ':' in value:
-            left, right = value.rsplit(':', 1)
-            return simple_name(left) + ':' + simple_name(right)
-        else:
+        if not value or ':' not in value:
             return simple_name(value)
+        left, right = value.rsplit(':', 1)
+        return f'{simple_name(left)}:{simple_name(right)}'
 
     process_bind_param = process_literal_param
 
@@ -192,41 +189,37 @@ def point(x, y, srid=-1):
 def linestringxyzm(xyzm, type='geography'):
     if xyzm:
         points = [f'ST_MakePoint({x}, {y}, {z}, {m})' for x, y, z, m in xyzm]
-        line = f'ST_MakeLine(ARRAY[{", ".join(points)}])'
+        return f'ST_MakeLine(ARRAY[{", ".join(points)}])'
     else:
-        log.warning(f'Empty geo data')
-        line = "'LINESTRINGZM EMPTY'::" + type
-    return line
+        log.warning('Empty geo data')
+        return "'LINESTRINGZM EMPTY'::" + type
 
 
 def linestringxym(xym, type='geography'):
     if xym:
         points = [f'ST_MakePointM({x}, {y}, {m})' for x, y, m in xym]
-        line = f'ST_MakeLine(ARRAY[{", ".join(points)}])'
+        return f'ST_MakeLine(ARRAY[{", ".join(points)}])'
     else:
-        log.warning(f'Empty geo data')
-        line = "'LINESTRINGM EMPTY'::" + type
-    return line
+        log.warning('Empty geo data')
+        return "'LINESTRINGM EMPTY'::" + type
 
 
 def linestringxyz(xyz, type='geography'):
     if xyz:
         points = [f'ST_MakePoint({x}, {y}, {z})' for x, y, z in xyz]
-        line = f'ST_MakeLine(ARRAY[{", ".join(points)}])'
+        return f'ST_MakeLine(ARRAY[{", ".join(points)}])'
     else:
-        log.warning(f'Empty geo data')
-        line = "'LINESTRINGZ EMPTY'::" + type
-    return line
+        log.warning('Empty geo data')
+        return "'LINESTRINGZ EMPTY'::" + type
 
 
 def linestringxy(xy, type='geography'):
     if xy:
         points = [f'ST_MakePoint({x}, {y})' for x, y in xy]
-        line = f'ST_MakeLine(ARRAY[{", ".join(points)}])'
+        return f'ST_MakeLine(ARRAY[{", ".join(points)}])'
     else:
-        log.warning(f'Empty geo data')
-        line = "'LINESTRING EMPTY'::" + type
-    return line
+        log.warning('Empty geo data')
+        return "'LINESTRING EMPTY'::" + type
 
 
 NAME = 'name'
@@ -266,6 +259,4 @@ class UTC(TypeDecorator):
     cache_ok = True
 
     def process_result_value(self, value, dialect):
-        if value is None:
-            return None
-        return value.replace(tzinfo=pytz.UTC)
+        return None if value is None else value.replace(tzinfo=pytz.UTC)

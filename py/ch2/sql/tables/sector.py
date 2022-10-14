@@ -58,9 +58,17 @@ class SectorJournal(GroupedSource):
 
     @classmethod
     def clean(cls, s):
-        q1 = s.query(SectorJournal.id). \
-            filter(or_(SectorJournal.sector_id == None,
-                       SectorJournal.activity_journal_id == None)).cte()
+        q1 = (
+            s.query(SectorJournal.id)
+            .filter(
+                or_(
+                    SectorJournal.sector_id is None,
+                    SectorJournal.activity_journal_id is None,
+                )
+            )
+            .cte()
+        )
+
         s.query(Source).filter(Source.id.in_(q1)).delete(synchronize_session=False)
 
 
@@ -95,15 +103,13 @@ class SectorGroup(Base):
         radius = radius_km * 1000
         if delete is not None:
             query = s.query(SectorGroup). \
-                filter(func.ST_Distance(SectorGroup.centre, centre) < radius,
+                    filter(func.ST_Distance(SectorGroup.centre, centre) < radius,
                        SectorGroup.srid == srid)
-            n = query.count()
-            if delete:
-                if n:
+            if n := query.count():
+                if delete:
                     log.warning(f'Deleting {n} previous sector groups')
                     query.delete(synchronize_session=False)
-            else:
-                if n:
+                else:
                     sector_group = query.first()
                     log.info(f'Using previously defined sector group "{sector_group.title}"')
                     return sector_group

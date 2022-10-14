@@ -14,13 +14,13 @@ STDERR_HANDLER = None
 def configure_log(name, path, verbosity, levels=None):
 
     global STDERR_HANDLER
-    levels = levels or {}
-
     if not getLogger(name).handlers:
         file_formatter = Formatter('%(levelname)-7s %(asctime)s: %(message)s')
         file_handler = RotatingFileHandler(path, maxBytes=1e6, backupCount=10)
         file_handler.setLevel(DEBUG)
         file_handler.setFormatter(file_formatter)
+        levels = levels or {}
+
         for root, level in levels.items():
             log = getLogger(root)
             log.setLevel(level)

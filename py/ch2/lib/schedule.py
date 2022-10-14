@@ -75,27 +75,20 @@ class Schedule:
     def __parse_frame(self, frame):
         if frame is None:
             frame = 'd'
-        if '/' in frame:
-            offset, rft = frame.split('/')
-        else:
-            offset, rft = '0', frame
+        offset, rft = frame.split('/') if '/' in frame else ('0', frame)
         self.repeat, self.frame_type = self.__parse_ordinal(rft)
         if self.frame_type == 'x' and (self.repeat != 1 or offset != '0'):
             raise ScheduleException('Repetition and offset not supported by extended frames')
-        if '-' in offset:
-            self.offset = self.__date_to_ordinal(offset)
-        else:
-            self.offset = int(offset)
+        self.offset = self.__date_to_ordinal(offset) if '-' in offset else int(offset)
         self.offset %= self.repeat
 
     def __parse_location(self, location):
         if location[-3:] in DOW:
-            if len(location) > 3:
-                if self.frame_type == 'd':
-                    raise ScheduleException('Numbered locations in daily frames not supported')
-                return int(location[:-3]), self.DOW_INDEX[location[-3:]]
-            else:
+            if len(location) <= 3:
                 return 0, self.DOW_INDEX[location]  # 0 means all weeks (in a month)
+            if self.frame_type == 'd':
+                raise ScheduleException('Numbered locations in daily frames not supported')
+            return int(location[:-3]), self.DOW_INDEX[location[-3:]]
         else:
             if self.frame_type == 'x' and not self.start:
                 raise ScheduleException('Numerical locations in extended frames require a range start')
@@ -112,15 +105,11 @@ class Schedule:
             self.locations = []  # all
 
     def __key(self, location):
-        if isinstance(location, int):
-            return (-1, location)
-        else:
-            return location
+        return (-1, location) if isinstance(location, int) else location
 
     def __parse_range(self, range):
         if range:
-            m = compile(r'^(\d+-\d+-\d+)?-(\d+-\d+-\d+)?$').match(range)
-            if m:
+            if m := compile(r'^(\d+-\d+-\d+)?-(\d+-\d+-\d+)?$').match(range):
                 self.__start = to_date(m.group(1)) if m.group(1) else None
                 self.__finish = to_date(m.group(2)) if m.group(2) else None
             else:
@@ -132,7 +121,7 @@ class Schedule:
             self.__start, self.__finish = None, None
 
     def __str__(self):
-        return '%s%s%s' % (self.__str_offset(), self.__str_locations(), self.__str_ranges())
+        return f'{self.__str_offset()}{self.__str_locations()}{self.__str_ranges()}'
 
     def __eq__(self, other):
         return isinstance(other, Schedule) and str(other) == str(self)
@@ -142,13 +131,13 @@ class Schedule:
         if self.offset:
             return '%d/%s%s' % (self.offset, repeat, self.frame_type)
         elif repeat or self.frame_type != 'd' or not (self.start or self.finish):
-            return '%s%s' % (repeat, self.frame_type)
+            return f'{repeat}{self.frame_type}'
         else:
             return ''
 
     def __str_locations(self):
         if self.locations:
-            return '[%s]' % ','.join(map(self.__str_location, self.locations))
+            return f"[{','.join(map(self.__str_location, self.locations))}]"
         else:
             return ''
 
@@ -167,17 +156,14 @@ class Schedule:
         elif self.__start and self.__start + dt.timedelta(days=1) == self.__finish:
             return self.__str_range(self.__start)
         elif self.__start and not self.__finish:
-            return '%s-' % self.__str_range(self.__start)
+            return f'{self.__str_range(self.__start)}-'
         elif self.__finish and not self.__start:
-            return '-%s' % self.__str_range(self.__finish)
+            return f'-{self.__str_range(self.__finish)}'
         else:
-            return '%s-%s' % (self.__str_range(self.__start), self.__str_range(self.finish))
+            return f'{self.__str_range(self.__start)}-{self.__str_range(self.finish)}'
 
     def __str_range(self, range):
-        if range is None:
-            return ''
-        else:
-            return format_date(range)
+        return '' if range is None else format_date(range)
 
     def frame_class(self):
         return {'x': Extended, 'd': Day, 'w': Week, 'm': Month, 'y': Year}[self.frame_type]
@@ -200,13 +186,10 @@ class Schedule:
                (self.finish is None or date < self.finish)
 
     def describe(self, compact=False):
-        if compact:
-            text = self.frame_type
-        else:
-            text = self.frame_class().__name__
+        text = self.frame_type if compact else self.frame_class().__name__
         if self.repeat > 1:
             text = '%d%ss' % (self.repeat, text)
-        text = '%s%s' % (text, self.__str_locations())
+        text = f'{text}{self.__str_locations()}'
         if compact and text == 'x':
             text = 'all'
         elif not compact and text == 'Extended':
@@ -214,10 +197,7 @@ class Schedule:
         return text
 
     def __in_range_or_none(self, date):
-        if self.in_range(date):
-            return date
-        else:
-            return None
+        return date if self.in_range(date) else None
 
     def start_of_frame(self, date):
         return self.__in_range_or_none(self.__frame.start_of_frame(date))
@@ -258,15 +238,9 @@ class Schedule:
 
         def apply_with_none(f, a, b):
             if a:
-                if b:
-                    return f(a, b)
-                else:
-                    return a
+                return f(a, b) if b else a
             else:
-                if b:
-                    return b
-                else:
-                    return None
+                return b or None
 
         parent.start = apply_with_none(min, parent.start, child.start)
         parent.finish = apply_with_none(max, parent.finish, child.finish)
@@ -405,10 +379,7 @@ class Year(Frame):
 class Extended(Frame):
 
     def start_of_frame(self, date):
-        if self.schedule.start:
-            return self.schedule.start
-        else:
-            return NEG_INFINITY
+        return self.schedule.start or NEG_INFINITY
 
     def locations_from(self, start):
         if self.schedule.locations:
@@ -416,7 +387,7 @@ class Extended(Frame):
                 yield from super().locations_from(start)
             else:
                 while self.schedule.in_range(start):
-                    days = set(location[1] for location in self.schedule.locations)
+                    days = {location[1] for location in self.schedule.locations}
                     if DateOrdinals(start).dow in days:
                         yield start
                     start += dt.timedelta(days=1)
@@ -426,7 +397,7 @@ class Extended(Frame):
                 start += dt.timedelta(days=1)
 
     def length_in_days(self, date):
-        start = self.schedule.start if self.schedule.start else NEG_INFINITY
-        finish = self.schedule.finish if self.schedule.finish else POS_INFINITY
+        start = self.schedule.start or NEG_INFINITY
+        finish = self.schedule.finish or POS_INFINITY
         return (finish - start).days
 

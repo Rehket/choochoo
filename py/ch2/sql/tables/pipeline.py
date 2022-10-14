@@ -65,7 +65,7 @@ class Pipeline(Base):
     def all(cls, s, type, like=tuple(), id=None):
         pipelines = cls._query(s, type, like=like, id=id).all()
         if not pipelines:
-            msg = 'No pipelines configured for type %s' % PipelineType(type).name
+            msg = f'No pipelines configured for type {PipelineType(type).name}'
             if like:
                 msg += f' like {like}'
             if id:

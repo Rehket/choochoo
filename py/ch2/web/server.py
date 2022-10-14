@@ -48,20 +48,20 @@ class WebController(BaseController):
     def __init__(self, config, max_retries=1, retry_secs=1):
         super().__init__(WEB, config, WebServer, max_retries=max_retries, retry_secs=retry_secs)
         args = config.args
-        self.__warn_data = args[WARN + '-' + DATA]
-        self.__warn_secure = args[WARN + '-' + SECURE]
+        self.__warn_data = args[f'{WARN}-{DATA}']
+        self.__warn_secure = args[f'{WARN}-{SECURE}']
         self.__notebook_dir = args[NOTEBOOK_DIR]
         self.__thumbnail_dir = args[IMAGE_DIR]
         self.__jupyter = args[JUPYTER]
 
     def _build_cmd_and_log(self, ch2):
         log_name = 'web-service.log'
-        cmd = f'{ch2} {mm(VERBOSITY)} 0 {mm(LOG)} {log_name} {mm(BASE)} {self._config.args[BASE]} ' \
-              f'{WEB} {SERVICE} {mm(WEB + "-" + BIND)} {self._bind} {mm(WEB + "-" + PORT)} {self._port} ' \
-              f'{mm(JUPYTER)} {self.__jupyter} ' \
-              f'{mm(IMAGE_DIR)} {self.__thumbnail_dir} {mm(NOTEBOOK_DIR)} {self.__notebook_dir}'
-        if self.__warn_data: cmd += f' {mm(WARN + "-" + DATA)}'
-        if self.__warn_secure: cmd += f' {mm(WARN + "-" + SECURE)}'
+        cmd = f'{ch2} {mm(VERBOSITY)} 0 {mm(LOG)} {log_name} {mm(BASE)} {self._config.args[BASE]} {WEB} {SERVICE} {mm(f"{WEB}-{BIND}")} {self._bind} {mm(f"{WEB}-{PORT}")} {self._port} {mm(JUPYTER)} {self.__jupyter} {mm(IMAGE_DIR)} {self.__thumbnail_dir} {mm(NOTEBOOK_DIR)} {self.__notebook_dir}'
+
+        if self.__warn_data:
+            cmd += f' {mm(f"{WARN}-{DATA}")}'
+        if self.__warn_secure:
+            cmd += f' {mm(f"{WARN}-{SECURE}")}'
         return cmd, log_name
 
     def _run(self):
@@ -221,20 +221,19 @@ class WebServer:
         def wrapper(request, s, *args, **kargs):
             if config:
                 if not self.__configure.is_configured():
-                    log.debug(f'Redirect (not configured)')
+                    log.debug('Redirect (not configured)')
                     return JsonResponse({REDIRECT: '/configure/initial'})
                 # if we don't care about config we certainly don't care about data
-                if s and empty:
-                    if self.__configure.is_empty(s):
-                        log.debug(f'Redirect (no data)')
-                        return JsonResponse({REDIRECT: '/upload'})
+                if s and empty and self.__configure.is_empty(s):
+                    log.debug('Redirect (no data)')
+                    return JsonResponse({REDIRECT: '/upload'})
                 # todo - should we test for if s here?
                 if s and busy and self.__config.exists_any_process():
                     return JsonResponse({REDIRECT: '.'})  # todo - does this work?
             data = handler(request, s, *args, **kargs)
             msg = f'Returning data: {data}'
             if len(msg) > MAX_MSG:
-                msg = msg[:MAX_MSG-20] + ' ... ' + msg[-10:]
+                msg = f'{msg[:MAX_MSG - 20]} ... {msg[-10:]}'
             log.debug(msg)
             return JsonResponse({DATA: data})
 

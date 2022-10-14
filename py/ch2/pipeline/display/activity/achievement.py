@@ -14,9 +14,9 @@ class AchievementDelegate(ActivityJournalDelegate):
 
     @optional_text('Achievements')
     def read_journal_date(self, s, ajournal, date):
-        achievements = list(self._achievements_for_journal(s, ajournal))
-        if not achievements: achievements = [text('Get out and try harder!')]
-        yield from achievements
+        yield from list(self._achievements_for_journal(s, ajournal)) or [
+            text('Get out and try harder!')
+        ]
 
     def _achievements_for_journal(self, s, ajournal):
         for achievement in s.query(Achievement). \
@@ -27,6 +27,5 @@ class AchievementDelegate(ActivityJournalDelegate):
     def read_interval(self, s, interval):
         # todo?
         return
-        yield
 
 

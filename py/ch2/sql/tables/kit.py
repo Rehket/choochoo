@@ -66,17 +66,14 @@ def get_name(s, name, classes=None, require=False):
     # these cannot be parameter defaults because they're undefined at the top level
     classes = classes or (KitGroup, KitItem, KitComponent, KitModel)
     for cls in classes:
-        # can be multiple models, in which case we return one 'at random'
-        instance = s.query(cls).filter(cls.name == name).first()
-        if instance:
+        if instance := s.query(cls).filter(cls.name == name).first():
             return instance
     if require:
         raise Exception(f'Cannot find "{name}"')
 
 
 def assert_name_does_not_exist(s, name):
-    instance = get_name(s, name)
-    if instance:
+    if instance := get_name(s, name):
         raise Exception(f'The name "{name}" is already used for a {type(instance).SIMPLE_NAME}')
 
 
@@ -187,8 +184,7 @@ class StatisticsMixin:
         model[STATISTICS] = model_statistics
 
     def _calculate_individual_statistics(self, model_statistics, name, values, units):
-        n = len(values)
-        if n:
+        if n := len(values):
             values = [value.value for value in values]
             total = sum(values)
             # had mean and median, but they were pointless
@@ -199,16 +195,16 @@ class ModelMixin:
 
     @staticmethod
     def fmt_time(time):
-        if time:
-            return time_to_local_time(time, fmt=YMD)
-        else:
-            return None
+        return time_to_local_time(time, fmt=YMD) if time else None
 
     def to_model(self, s, depth=0, statistics=None, time=None, own_models=True):
         model = {TYPE: self.SIMPLE_NAME, DB: self.id, NAME: self.name}
         try:
-            model.update({ADDED: self.fmt_time(self.time_added(s)),
-                          EXPIRED: self.fmt_time(self.time_expired(s))})
+            model |= {
+                ADDED: self.fmt_time(self.time_added(s)),
+                EXPIRED: self.fmt_time(self.time_expired(s)),
+            }
+
         except AttributeError:
             pass  # not a subclass of statistics mixin
         if depth > 0:
@@ -242,15 +238,12 @@ class KitGroup(ModelMixin, Base):
                 log.warning(f'Forcing creation of new group ({name})')
                 return add(s, KitGroup(name=name))
             else:
-                groups = \
-                    s.query(KitGroup).order_by(KitGroup.name).all()
-                if groups:
-                    log.info('Existing groups:')
-                    for existing in groups:
-                        log.info(f'  {existing.name}')
-                    raise Exception(f'Give an existing group, or specify {mm(FORCE)} to create a new group ({name})')
-                else:
+                if not (groups := s.query(KitGroup).order_by(KitGroup.name).all()):
                     raise Exception(f'Specify {mm(FORCE)} to create a new group ({name})')
+                log.info('Existing groups:')
+                for existing in groups:
+                    log.info(f'  {existing.name}')
+                raise Exception(f'Give an existing group, or specify {mm(FORCE)} to create a new group ({name})')
 
     def _add_children(self, s, model, depth=0, statistics=None, time=None, own_models=True):
         model[ITEMS] = [item.to_model(s, depth=depth, statistics=statistics, 
@@ -282,14 +275,12 @@ class KitItem(ModelMixin, StatisticsMixin, UngroupedSource):
 
     @classmethod
     def add(cls, s, group, name, date):
-        # don't rely on unique index to catch duplicates because that's not triggered until commit
         if s.query(KitItem).filter(KitItem.name == name).count():
             raise Exception(f'Item {name} of group {group.name} already exists')
-        else:
-            assert_name_does_not_exist(s, name)
-            item = add(s, KitItem(group=group, name=name))
-            item._add_statistics(s, date)
-            return item
+        assert_name_does_not_exist(s, name)
+        item = add(s, KitItem(group=group, name=name))
+        item._add_statistics(s, date)
+        return item
 
     def _add_statistics(self, s, time):
         self._add_timestamp(s, T.KIT_ADDED, time)
@@ -331,8 +322,8 @@ class KitItem(ModelMixin, StatisticsMixin, UngroupedSource):
 
     def to_model(self, s, depth=0, statistics=None, time=None, own_models=True):
         model = super().to_model(s, depth=depth, statistics=statistics, time=time)
-        model_ids = set(model.id for model in self.models)
         if own_models and COMPONENTS in model:
+            model_ids = {model.id for model in self.models}
             for component in model[COMPONENTS]:
                 # restrict component's models to subset of own models
                 component[MODELS] = [model for model in component[MODELS] if model[DB] in model_ids]
@@ -370,14 +361,16 @@ class KitComponent(ModelMixin, Base):
                 log.warning(f'Forcing creation of new component ({name})')
                 return add(s, KitComponent(name=name))
             else:
-                components = s.query(KitComponent).order_by(KitComponent.name).all()
-                if components:
-                    log.info('Existing components:')
-                    for existing in components:
-                        log.info(f'  {existing.name}')
-                    raise Exception(f'Give an existing component, or specify {mm(FORCE)} to create a new one ({name})')
-                else:
+                if not (
+                    components := s.query(KitComponent)
+                    .order_by(KitComponent.name)
+                    .all()
+                ):
                     raise Exception(f'Specify {mm(FORCE)} to create a new component ({name})')
+                log.info('Existing components:')
+                for existing in components:
+                    log.info(f'  {existing.name}')
+                raise Exception(f'Give an existing component, or specify {mm(FORCE)} to create a new one ({name})')
 
     def delete_if_unused(self, s):
         s.refresh(self)  # make sure deleted models are no longer present
@@ -416,7 +409,7 @@ class KitComponent(ModelMixin, Base):
                 population = population_models[NAME]
                 for instance_statistic in instance[STATISTICS]:
                     population_statistic = population[STATISTICS]. \
-                        filter(lambda statistic: statistic[NAME] == instance_statistic[NAME])[0]
+                            filter(lambda statistic: statistic[NAME] == instance_statistic[NAME])[0]
                     population_statistic[N] += 1
                     population_statistic[MEAN] += instance_statistic[SUM]
         model[MODELS] = []
@@ -462,14 +455,14 @@ class KitModel(ModelMixin, StatisticsMixin, UngroupedSource):
     @classmethod
     def _reject_duplicate(cls, s, item, component, name, time):
         if s.query(StatisticJournal). \
-                join(StatisticName). \
-                join(KitModel, KitModel.id == StatisticJournal.source_id). \
-                filter(StatisticName.name == N.KIT_ADDED,
+                    join(StatisticName). \
+                    join(KitModel, KitModel.id == StatisticJournal.source_id). \
+                    filter(StatisticName.name == N.KIT_ADDED,
                        StatisticJournal.time == time,
                        KitModel.name == name,
                        KitModel.component == component,
                        KitModel.item == item).count():
-            raise Exception(f'This part already exists at this date')
+            raise Exception('This part already exists at this date')
 
     @classmethod
     def _add_instance(cls, s, item, component, name):
@@ -499,17 +492,22 @@ class KitModel(ModelMixin, StatisticsMixin, UngroupedSource):
     @classmethod
     def get_all_at(cls, s, item, time):
         beforeq = s.query(StatisticJournalTimestamp.source_id, StatisticJournalTimestamp.time). \
-            join(StatisticName). \
-            filter(StatisticName.name == N.KIT_ADDED).subquery()
+                join(StatisticName). \
+                filter(StatisticName.name == N.KIT_ADDED).subquery()
         afterq = s.query(StatisticJournalTimestamp.source_id, StatisticJournalTimestamp.time). \
-            join(StatisticName). \
-            filter(StatisticName.name == N.KIT_RETIRED).subquery()
-        return s.query(KitModel). \
-            join(beforeq, beforeq.c.source_id == KitModel.id). \
-            outerjoin(afterq, afterq.c.source_id == KitModel.id). \
-            filter(KitModel.item == item,
-                   beforeq.c.time <= time,
-                   or_(afterq.c.time >= time, afterq.c.time == None)).all()
+                join(StatisticName). \
+                filter(StatisticName.name == N.KIT_RETIRED).subquery()
+        return (
+            s.query(KitModel)
+            .join(beforeq, beforeq.c.source_id == KitModel.id)
+            .outerjoin(afterq, afterq.c.source_id == KitModel.id)
+            .filter(
+                KitModel.item == item,
+                beforeq.c.time <= time,
+                or_(afterq.c.time >= time, afterq.c.time is None),
+            )
+            .all()
+        )
 
     @classmethod
     def get_all(cls, s, item, component):
@@ -523,15 +521,20 @@ class KitModel(ModelMixin, StatisticsMixin, UngroupedSource):
         q = s.query(KitModel)
         if time:
             beforeq = s.query(StatisticJournalTimestamp.source_id, StatisticJournalTimestamp.time). \
-                join(StatisticName). \
-                filter(StatisticName.name == N.KIT_ADDED).subquery()
+                    join(StatisticName). \
+                    filter(StatisticName.name == N.KIT_ADDED).subquery()
             afterq = s.query(StatisticJournalTimestamp.source_id, StatisticJournalTimestamp.time). \
-                join(StatisticName). \
-                filter(StatisticName.name == N.KIT_RETIRED).subquery()
-            q = q.join(beforeq, beforeq.c.source_id == KitModel.id). \
-                outerjoin(afterq, afterq.c.source_id == KitModel.id). \
-                filter(beforeq.c.time <= time,
-                       or_(afterq.c.time >= time, afterq.c.time == None))
+                    join(StatisticName). \
+                    filter(StatisticName.name == N.KIT_RETIRED).subquery()
+            q = (
+                q.join(beforeq, beforeq.c.source_id == KitModel.id)
+                .outerjoin(afterq, afterq.c.source_id == KitModel.id)
+                .filter(
+                    beforeq.c.time <= time,
+                    or_(afterq.c.time >= time, afterq.c.time is None),
+                )
+            )
+
         instance = q.filter(KitModel.item == item,
                             KitModel.component == component,
                             KitModel.name == name).first()
@@ -564,11 +567,9 @@ class KitModel(ModelMixin, StatisticsMixin, UngroupedSource):
     def undo(self, s):
         time = self.time_added(s)
         s.delete(self)
-        before = self.before(s, time)
-        if before:
+        if before := self.before(s, time):
             before._remove_statistic(s, N.KIT_RETIRED)
-            after = self.after(s, time)
-            if after:
+            if after := self.after(s, time):
                 before._add_timestamp(s, T.KIT_RETIRED, after.time_added(s))
 
     def time_range(self, s):

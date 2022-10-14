@@ -79,8 +79,11 @@ class BatchLoader:
         for mapper, instances in self.__group_by_mapper(session.new):
             if self.__key_ok(mapper):
                 column = mapper.primary_key[0].name
-                missing = [instance for instance in instances if getattr(instance, column) is None]
-                if missing:
+                if missing := [
+                    instance
+                    for instance in instances
+                    if getattr(instance, column) is None
+                ]:
                     self.__set_ids(session, mapper, column, missing)
                 else:
                     self.warning(f'ID already populated for {type(instances[0])}')
@@ -99,7 +102,7 @@ class BatchLoader:
                 self.sessions += 1
                 listen(session, 'before_flush', self.__before_flush)
             else:
-                log.warning(f'Tried to register session more than once')
+                log.warning('Tried to register session more than once')
 
     def __before_flush(self, session, context, instances):
         try:

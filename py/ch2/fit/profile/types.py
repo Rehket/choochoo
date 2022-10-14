@@ -28,11 +28,11 @@ class AbstractType(Named):
 
     @abstractmethod
     def profile_to_internal(self, cell_contents):
-        raise NotImplementedError('%s: %s' % (self.__class__.__name__, self.name))
+        raise NotImplementedError(f'{self.__class__.__name__}: {self.name}')
 
     @abstractmethod
     def parse_type(self, bytes, count, endian, timestamp, **options):
-        raise NotImplementedError('%s: %s' % (self.__class__.__name__, self.name))
+        raise NotImplementedError(f'{self.__class__.__name__}: {self.name}')
 
 
 class SimpleType(AbstractType):
@@ -78,17 +78,17 @@ class StructSupport(SimpleType):
         elif accumulators and name in accumulators:
             if count > 1:
                 raise Exception('Cannot accumulate multiple fields (%s: %d)' % (name, count))
-            return self.__unpack_acc(bytearray(data[:self.n_bytes]), formats[endian] % 1, scale, offset,
-                                     name, accumulators, n_bits, endian)
-        else:
-            if (scale == 1 and offset == 0) or self.name == 'enum':   # enums are not scaled
-                # fast and preserves integers
-                return unpack(formats[endian] % count, data[:self.n_bytes * count])
-            elif count == 1:  # if no check, scale single bad values
-                return (unpack(formats[endian] % 1, data[:self.n_bytes])[0] / scale - offset,)
-            else:  # match weird CSV behaviour
-                return tuple(self.__unpack_scaled(data[self.n_bytes*i:self.n_bytes*(i+1)], formats[endian],
-                                                  bad[endian], scale, offset) for i in range(count))
+            else:
+                return self.__unpack_acc(bytearray(data[:self.n_bytes]), formats[endian] % 1, scale, offset,
+                                         name, accumulators, n_bits, endian)
+        elif (scale == 1 and offset == 0) or self.name == 'enum':   # enums are not scaled
+            # fast and preserves integers
+            return unpack(formats[endian] % count, data[:self.n_bytes * count])
+        elif count == 1:  # if no check, scale single bad values
+            return (unpack(formats[endian] % 1, data[:self.n_bytes])[0] / scale - offset,)
+        else:  # match weird CSV behaviour
+            return tuple(self.__unpack_scaled(data[self.n_bytes*i:self.n_bytes*(i+1)], formats[endian],
+                                              bad[endian], scale, offset) for i in range(count))
 
     def __unpack_scaled(self, data, format, bad, scale, offset):
         value = unpack(format % 1, data)[0]
@@ -118,10 +118,7 @@ class StructSupport(SimpleType):
         else:
             long = short
         accumulators[name] = (data, long)
-        if scale == 1 and offset == 0:
-            return (long,)
-        else:
-            return (long / scale - offset,)
+        return (long, ) if scale == 1 and offset == 0 else (long / scale - offset, )
 
     def __merge_bytes(self, prev_data, data, n_bits, endian, index=None):
         now = min(8, n_bits)
@@ -208,15 +205,12 @@ class AutoInteger(StructSupport):
         format = self.size_to_format[self.n_bytes]
         if not self.signed:
             format = format.upper()
-        self.__formats = ['<%d' + format, '>%d' + format]
+        self.__formats = [f'<%d{format}', f'>%d{format}']
         self.__bad = self._pack_bad(0 if match.group(3) == 'z' else 2 ** (n_bits - (1 if self.signed else 0)) - 1)
 
     @staticmethod
     def int(cell):
-        if isinstance(cell, int):
-            return cell
-        else:
-            return int(cell, 0)
+        return cell if isinstance(cell, int) else int(cell, 0)
 
     def is_bad(self, bytes, count, endian):
         return self._all_bad(bytes, self.__bad[endian], count)
@@ -332,7 +326,7 @@ class AutoFloat(StructSupport):
         if self.n_bytes not in self.size_to_format:
             raise Exception('Cannot unpack %d bytes as a float' % self.n_bytes)
         format = self.size_to_format[self.n_bytes]
-        self.__formats = ['<%d' + format, '>%d' + format]
+        self.__formats = [f'<%d{format}', f'>%d{format}']
         self.__bad = self._pack_bad(2 ** n_bits - 1)
 
     def is_bad(self, bytes, count, endian):
@@ -349,8 +343,14 @@ class Mapping(AbstractType):
         base_type_name = row.base_type
         base_type = types.profile_to_type(base_type_name, auto_create=True)
         super().__init__(log, name, base_type.n_bytes, base_type=base_type)
-        self._profile_to_internal = WarnDict(log, 'No internal value for profile %r') if warn else dict()
-        self._internal_to_profile = WarnDict(log, 'No profile value for internal %r') if warn else dict()
+        self._profile_to_internal = (
+            WarnDict(log, 'No internal value for profile %r') if warn else {}
+        )
+
+        self._internal_to_profile = (
+            WarnDict(log, 'No profile value for internal %r') if warn else {}
+        )
+
         while rows:
             peek = rows.peek()
             if peek.type_name or peek.value_name is None or peek.value is None:
@@ -402,7 +402,7 @@ class Types:
         rows = Rows(sheet, wrapper=Row)
         for row in rows:
             if row[0] and row.type_name[0].isupper():
-                self.__log.debug('Skipping %s' % (row,))
+                self.__log.debug(f'Skipping {row}')
             elif row[0]:
                 # self.__log.info('Parsing type %s' % row[0])
                 self.__add_type(Mapping(self.__log, row, rows, self, warn=warn))
@@ -447,8 +447,7 @@ class Types:
         except KeyError:
             if auto_create:
                 for cls in (AutoFloat, AutoInteger):
-                    match = cls.pattern.match(name)
-                    if match:
+                    if match := cls.pattern.match(name):
                         self.__log.info('Auto-adding type %s for %r' % (cls.__name__, name))
                         self.__add_type(cls(self.__log, name))
                         return self.profile_to_type(name)
@@ -461,5 +460,5 @@ class Row(namedtuple('BaseRow',
     __slots__ = ()
 
     def __new__(cls, row):
-        return super().__new__(cls, *tuple(row)[0:5])
+        return super().__new__(cls, *tuple(row)[:5])
 

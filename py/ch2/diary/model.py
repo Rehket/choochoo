@@ -144,14 +144,12 @@ def trim_no_stats(f):
 
         def trim(model):
             if isinstance(model, list):
-                head, rest = model[0:1], model[1:]
+                head, rest = model[:1], model[1:]
                 rest = [x for x in [trim(entry) for entry in rest] if x]
-                if rest:
-                    return head + rest
-                else:
-                    return []
+                return head + rest if rest else []
             else:
                 return model
+
         return trim(result)
 
     return decorated

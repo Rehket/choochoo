@@ -24,9 +24,13 @@ class KitCalculator(OwnerInMixin, ActivityJournalProcessCalculator):
         with self._config.db.session_context() as s:
             ajournal = self._get_source(s, start)
             with Timestamp(owner=self.owner_out, source=ajournal).on_success(s):
-                kit = StatisticJournal.for_source(s, ajournal.id, ActivityReader.KIT, self.owner_in,
-                                                  ajournal.activity_group)
-                if kit:
+                if kit := StatisticJournal.for_source(
+                    s,
+                    ajournal.id,
+                    ActivityReader.KIT,
+                    self.owner_in,
+                    ajournal.activity_group,
+                ):
                     log.debug(f'Read {kit.value} at {missed} / {ajournal.activity_group.name}')
                     for kit_name in kit.value.split(','):
                         try:

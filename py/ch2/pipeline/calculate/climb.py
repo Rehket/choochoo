@@ -85,10 +85,14 @@ select st_x((point).geom) as x, st_y((point).geom) as y,
   from points;
         ''')
         log.debug(sql)
-        df = pd.read_sql(sql, s.connection(),
-                         params={'sector_group_id': sector_group_id,
-                                 'activity_journal_id': activity_journal_id})
-        return df
+        return pd.read_sql(
+            sql,
+            s.connection(),
+            params={
+                'sector_group_id': sector_group_id,
+                'activity_journal_id': activity_journal_id,
+            },
+        )
 
     def __register_climb(self, s, df, climb_id, sector_group, activity_journal_id):
         # this is not easy
@@ -109,7 +113,7 @@ select st_x((point).geom) as x, st_y((point).geom) as y,
         if N.CLIMB_CATEGORY in climb:
             title = f'Climb (cat {climb[N.CLIMB_CATEGORY]})'
         else:
-            title = f'Climb (uncat)'
+            title = 'Climb (uncat)'
         category = climb.get(N.CLIMB_CATEGORY, None)
         # text because we're passing in direct SQL functions, not EWKT
         climb = add(s, SectorClimb(sector_group=sector_group, route=text(route), title=title, owner=self,

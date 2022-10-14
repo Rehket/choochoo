@@ -111,4 +111,4 @@ finish and paths start.
                              after_records=after_records, limit_records=limit_records,
                              warn=warn, no_validate=no_validate, max_delta_t=max_delta_t)
         else:
-            raise Exception('Bad format: %s' % format)
+            raise Exception(f'Bad format: {format}')

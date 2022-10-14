@@ -58,18 +58,19 @@ class ResponseCalculator(LoaderMixin, OwnerInMixin, ProcessCalculator):
 
     def _delete(self, s):
         composite_ids = s.query(Composite.id). \
-            join(StatisticJournal, Composite.id == StatisticJournal.source_id). \
-            join(StatisticName, StatisticJournal.statistic_name_id == StatisticName.id). \
-            filter(StatisticName.owner == self.owner_out)
+                join(StatisticJournal, Composite.id == StatisticJournal.source_id). \
+                join(StatisticName, StatisticJournal.statistic_name_id == StatisticName.id). \
+                filter(StatisticName.owner == self.owner_out)
         log.debug(f'Delete query: {composite_ids}')
-        n = s.query(count(Source.id)). \
-            filter(Source.id.in_(composite_ids)). \
-            scalar()
-        if n:
+        if (
+            n := s.query(count(Source.id))
+            .filter(Source.id.in_(composite_ids))
+            .scalar()
+        ):
             log.warning(f'Deleting {n} Composite sources')
             s.query(Source). \
-                filter(Source.id.in_(composite_ids)). \
-                delete(synchronize_session=False)
+                    filter(Source.id.in_(composite_ids)). \
+                    delete(synchronize_session=False)
             s.commit()
             Composite.clean(s)
 

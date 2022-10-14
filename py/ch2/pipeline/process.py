@@ -33,7 +33,7 @@ def run_process_pipeline(config, type, *args, like=tuple(), worker=None, **extra
 
 def instantiate_pipeline(pipeline, config, *args, **kargs):
     kargs = dict(kargs)
-    kargs.update(pipeline.kargs)  # this is where kargs from the config are added in
+    kargs |= pipeline.kargs
     log.debug(f'Instantiating {pipeline} with {args}, {kargs}')
     return pipeline.cls(config, *args, **kargs)
 
@@ -254,9 +254,10 @@ class DependencyQueue:
 
     def __log_efficiency(self):
         clock_time = (now() - self.__start).total_seconds()
-        process_time = 0
-        for pipeline in self.__stats:
-            process_time += self.__stats[pipeline].duration_individual
+        process_time = sum(
+            self.__stats[pipeline].duration_individual for pipeline in self.__stats
+        )
+
         speedup = process_time / clock_time
         log.info(f'Clock time: {format_seconds(clock_time)}; Process time: {format_seconds(process_time)}; '
                  f'Speedup: x{speedup:.1f}')
@@ -322,7 +323,7 @@ class Stats:
         label = str(self.__pipeline)
         for suffix in ('Reader', 'Calculator'):
             if label.endswith(suffix):
-                label = label[:-len(suffix)+1] + '%'
+                label = f'{label[:-len(suffix) + 1]}%'
         return label
 
     def __str__(self):
@@ -337,10 +338,9 @@ def log_name(pipeline, log_index):
 
 
 def fmt_cmd(cmd, max=400):
-    if len(cmd) > max:
-        n1 = int(0.8 * max)
-        n2 = len(cmd) - (max - n1 - 3)
-        return cmd[:n1] + '...' + cmd[n2:]
-    else:
+    if len(cmd) <= max:
         return cmd
+    n1 = int(0.8 * max)
+    n2 = len(cmd) - (max - n1 - 3)
+    return f'{cmd[:n1]}...{cmd[n2:]}'
 

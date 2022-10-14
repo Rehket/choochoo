@@ -48,7 +48,7 @@ def print_calendar(schedule, start, months):
         print(' ' * (11 - len(title) // 2) + title)
         print(INDENT, end='')
         for day in ('Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'):
-            print(' %s' % day, end='')
+            print(f' {day}', end='')
         print()
         for week in month_days(start):
             print(INDENT, end='')

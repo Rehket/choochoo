@@ -16,7 +16,12 @@ class TestPlan(LogTestCase):
         plan = twelve_week_improver('2018-07-25')
         plan.create(config.db)
         with config.db.session_context() as s:
-            root = s.query(DiaryTopic).filter(DiaryTopic.parent_id == None, DiaryTopic.title == 'Plan').one()
+            root = (
+                s.query(DiaryTopic)
+                .filter(DiaryTopic.parent_id is None, DiaryTopic.title == 'Plan')
+                .one()
+            )
+
             self.assertEqual(len(root.children), 1)
             self.assertTrue(root.schedule)
             self.assertEqual(root.schedule.start, to_date('2018-07-25'))
@@ -32,7 +37,12 @@ class TestPlan(LogTestCase):
         plan = exponential_time('Time test', '2d[2]', '20M', 5, '2018-07-25', '3m')
         plan.create(config.db)
         with config.db.session_context() as s:
-            root = s.query(DiaryTopic).filter(DiaryTopic.parent_id == None, DiaryTopic.title == 'Plan').one()
+            root = (
+                s.query(DiaryTopic)
+                .filter(DiaryTopic.parent_id is None, DiaryTopic.title == 'Plan')
+                .one()
+            )
+
             self.assertEqual(len(root.children), 1)
             parent = root.children[0]
             self.assertEqual(len(parent.children), 46)
@@ -45,7 +55,12 @@ class TestPlan(LogTestCase):
         plan = exponential_distance('Distance test', 'w[mon,wed,fri]', '20km', 5, '2018-07-25', '1m')
         plan.create(config.db)
         with config.db.session_context() as s:
-            root = s.query(DiaryTopic).filter(DiaryTopic.parent_id == None, DiaryTopic.title == 'Plan').one()
+            root = (
+                s.query(DiaryTopic)
+                .filter(DiaryTopic.parent_id is None, DiaryTopic.title == 'Plan')
+                .one()
+            )
+
             self.assertEqual(len(root.children), 1)
             parent = root.children[0]
             self.assertEqual(len(parent.children), 14)

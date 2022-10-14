@@ -204,8 +204,7 @@ class BaseTree(ABC):
 
         `target` is the height for insertion.  This allows for subtrees to be re-inserted as a whole.
         '''
-        split = self.__add_to_node(self.__root, target, mbr_addition, content)
-        if split:
+        if split := self.__add_to_node(self.__root, target, mbr_addition, content):
             height = split[0][1][0] + 1
             self.__root = (height, split)
 
@@ -221,8 +220,7 @@ class BaseTree(ABC):
             child = entries[i_best][1]
             # optimistically set mbr on way down (since we have the mbr); will be removed if split spills data over
             entries[i_best] = (mbr_best, child)
-            split = self.__add_to_node(child, target, mbr_addition, content)
-            if split:
+            if split := self.__add_to_node(child, target, mbr_addition, content):
                 del entries[i_best]
                 entries.extend(split)
         else:
@@ -298,8 +296,9 @@ class BaseTree(ABC):
         '''
         Internal deletion from root (handling deletion of a node has different logic to internal nodes).
         '''
-        found = self.__delete_one_from_node(self.__root, mbr_deletion, content_deletion, match, 2)
-        if found:
+        if found := self.__delete_one_from_node(
+            self.__root, mbr_deletion, content_deletion, match, 2
+        ):
             delete, inserts, content_found = found
             if delete:
                 self.__root = (0, [])
@@ -309,7 +308,9 @@ class BaseTree(ABC):
             self.__update_state(-1, content_found)
         else:
             points, value = content_deletion
-            raise KeyError('Failed to delete %s%s' % (points, '' if value is None else ' (value %s)' % value))
+            raise KeyError(
+                f"Failed to delete {points}{'' if value is None else f' (value {value})'}"
+            )
 
     def __delete_one_from_node(self, node, mbr_deletion, content_deletion, match, local_min):
         '''
@@ -319,9 +320,13 @@ class BaseTree(ABC):
         for i, (mbr_entry, contents_entry) in enumerate(entries):
             if height:
                 if self.__descend(mbr_deletion, mbr_entry, match):
-                    found = self.__delete_one_from_node(contents_entry, mbr_deletion, content_deletion, match,
-                                                        self.__min_entries)
-                    if found:
+                    if found := self.__delete_one_from_node(
+                        contents_entry,
+                        mbr_deletion,
+                        content_deletion,
+                        match,
+                        self.__min_entries,
+                    ):
                         delete, inserts, content_found = found
                         if delete:
                             del entries[i]
@@ -500,25 +505,23 @@ class BaseTree(ABC):
         '''
         Internal tests of consistency.
         '''
-        if node:
-            height, entries = node
-            if len(entries) < self.__min_entries and node != self.__root:
-                raise Exception('Too few children at height %d' % height)
-            if len(entries) > self.__max_entries:
-                raise Exception('Too many children at height %d' % height)
-            if height:
-                count = 0
-                for mbr_entry, content_entry in entries:
-                    height_entry, entries_entry = content_entry
-                    mbr_check = self._mbr_of_entries(*entries_entry)
-                    if mbr_check != mbr_entry:
-                        raise Exception('Bad MBR at height %d %s / %s' % (height, mbr_check, mbr_entry))
-                    count += self._assert_consistent(content_entry)
-                return count
-            else:
-                return len(entries)
-        else:
+        if not node:
             return 0
+        height, entries = node
+        if len(entries) < self.__min_entries and node != self.__root:
+            raise Exception('Too few children at height %d' % height)
+        if len(entries) > self.__max_entries:
+            raise Exception('Too many children at height %d' % height)
+        if not height:
+            return len(entries)
+        count = 0
+        for mbr_entry, content_entry in entries:
+            height_entry, entries_entry = content_entry
+            mbr_check = self._mbr_of_entries(*entries_entry)
+            if mbr_check != mbr_entry:
+                raise Exception('Bad MBR at height %d %s / %s' % (height, mbr_check, mbr_entry))
+            count += self._assert_consistent(content_entry)
+        return count
 
     # allow different coordinate systems
     # nothing above should depend on the exact representation of point or mbr
@@ -685,10 +688,7 @@ class CartesianMixin:
             xm2 = min(x2, X2)
             ym1 = max(y1, Y1)
             ym2 = min(y2, Y2)
-            if xm2 > xm1 and ym2 > ym1:
-                inner = (xm2 - xm1) * (ym2 - ym1)
-            else:
-                inner = 0
+            inner = (xm2 - xm1) * (ym2 - ym1) if xm2 > xm1 and ym2 > ym1 else 0
             return outer - inner
 
 

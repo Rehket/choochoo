@@ -52,7 +52,7 @@ class Source(Base):
 
     @abstractmethod
     def time_range(self, s):
-        raise NotImplementedError('time_range for %s' % self)
+        raise NotImplementedError(f'time_range for {self}')
 
     @classmethod
     def before_flush(cls, s):
@@ -132,7 +132,7 @@ class GroupedSource(Source):
         super().__init__(**kargs)
 
     def long_str(self):
-        return super().long_str() + f' ({self.activity_group.name})'
+        return f'{super().long_str()} ({self.activity_group.name})'
 
 
 class UngroupedSource(Source):
@@ -204,12 +204,12 @@ class Interval(Source):
             stats_start_time, stats_finish_time = cls._raw_statistics_time_range(s, exclude_owners=exclude_owners)
             start = time_to_local_date(stats_start_time)
             finish = time_to_local_date(stats_finish_time)
-            log.debug('Statistics (in general) exist %s - %s' % (start, finish))
+            log.debug(f'Statistics (in general) exist {start} - {finish}')
             start = schedule.start_of_frame(start)
             finish = schedule.next_frame(finish)
             while start < finish:
                 existing = s.query(Interval). \
-                    filter(Interval.start == start,
+                        filter(Interval.start == start,
                            Interval.schedule == schedule,
                            Interval.owner == interval_owner).count()
                 if existing != expected:
@@ -243,8 +243,7 @@ class Interval(Source):
         else:
             extra = ' (not permanent)'
             q = q.filter(Interval.permanent == False)
-        count = q.count()
-        if count:
+        if count := q.count():
             log.debug(f'Cleaning {count} dirty intervals {extra}')
             s.query(Source).filter(Source.id.in_(q)).delete(synchronize_session=False)
             s.commit()

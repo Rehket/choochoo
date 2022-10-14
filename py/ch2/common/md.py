@@ -39,7 +39,7 @@ def parse(text):
                 paragraph = ''
             yield BR, None
         elif paragraph:
-            paragraph += ' ' + line.strip()
+            paragraph += f' {line.strip()}'
         else:
             paragraph = line
     if paragraph:
@@ -54,8 +54,6 @@ def filter_(parser, yes=None, no=None):
                 yield tag, value
             elif no and tag not in no:
                 yield tag, value
-            else:
-                pass
 
     return filtered
 
@@ -63,7 +61,7 @@ def filter_(parser, yes=None, no=None):
 class Formatter(ABC):
 
     def __init__(self, parser=None):
-        self._parser = parser if parser else parse
+        self._parser = parser or parse
 
     @abstractmethod
     def p(self, text):
@@ -169,8 +167,7 @@ class HTML(Formatter):
 
     def h(self, level, text):
         yield from self._ul(False)
-        yield from self._tag('h' + str(max(1, level + self._delta)), text)
+        yield from self._tag(f'h{str(max(1, level + self._delta))}', text)
 
     def br(self):
         return
-        yield

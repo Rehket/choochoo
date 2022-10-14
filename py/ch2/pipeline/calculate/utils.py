@@ -166,11 +166,11 @@ class RerunWhenNewActivitiesMixin(OwnerInMixin):
         if not prev:
             return ['missing']
         prev_ids = s.query(Timestamp.source_id). \
-            filter(Timestamp.owner == self.owner_in,
+                filter(Timestamp.owner == self.owner_in,
                    Timestamp.time < prev.time)
         after = s.query(count(ActivityJournal.id)). \
-            join(ActivityGroup). \
-            filter(not_(ActivityJournal.id.in_(prev_ids.cte()))).scalar()
+                join(ActivityGroup). \
+                filter(not_(ActivityJournal.id.in_(prev_ids.cte()))).scalar()
         if self.__excess:
             before = prev_ids.count()
             missing = after > self.__excess * before

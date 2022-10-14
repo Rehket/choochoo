@@ -23,14 +23,14 @@ class NearbyDelegate(ActivityJournalDelegate):
 
     def __read_nearby(self, s, ajournal):
         for title, callback in (('Any Time', nearby_any_time), ('Earlier', nearby_earlier)):
-            links = [link(fmt_nearby(aj, nb), db=(time_to_local_time(aj.start),))
-                     for (aj, nb) in callback(s, ajournal)]
-            if links:
+            if links := [
+                link(fmt_nearby(aj, nb), db=(time_to_local_time(aj.start),))
+                for (aj, nb) in callback(s, ajournal)
+            ]:
                 yield [text(title, tag=NEARBY_LINKS)] + links
 
     def read_interval(self, s, interval):
         return
-        yield
 
 
 def nearby_earlier(s, ajournal, threshold=0.3):

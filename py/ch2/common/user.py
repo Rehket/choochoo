@@ -25,7 +25,10 @@ def make_user_database(config, user, passwd):
 
     cnxn = config.db.engine.connect()
     if cnxn.execute(text('select 1 from pg_roles where rolname = :user'), user=user).fetchone():
-        raise ConnectionError(f'User already exists but could not connect with supplied password')
+        raise ConnectionError(
+            'User already exists but could not connect with supplied password'
+        )
+
 
     add_user(user_config)
     add_schema(user_config)

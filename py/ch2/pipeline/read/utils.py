@@ -36,7 +36,7 @@ class ProcessFitReader(ProcessPipeline):
             data_dir = join(data_dir, self.sub_dir)
         else:
             log.warning('No sub_dir defined - will scan entire tree')
-        return iglob(join(data_dir, '**/*' + DOT_FIT), recursive=True)
+        return iglob(join(data_dir, f'**/*{DOT_FIT}'), recursive=True)
 
     def _missing(self, s):
         return [file_scan.path for file_scan in modified_file_scans(s, self._all_paths(), self.owner_out)]
@@ -70,9 +70,12 @@ class ProcessFitReader(ProcessPipeline):
     @staticmethod
     def read_fit_file(data, *options):
         types, messages, records = filtered_records(data)
-        return [record.as_dict(*options)
-                for _, _, record in sorted(records,
-                                           key=lambda r: r[2].timestamp if r[2].timestamp else to_time(0.0))]
+        return [
+            record.as_dict(*options)
+            for _, _, record in sorted(
+                records, key=lambda r: r[2].timestamp or to_time(0.0)
+            )
+        ]
 
     @staticmethod
     def _first(path, records, *names):

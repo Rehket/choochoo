@@ -130,16 +130,22 @@ class Profile:
         for activity_group in self._activity_groups.values():
             add_impulse(s, activity_group)
             # we need a value here for various UI reasons.  might as well use my own value...
-            add_constant(s, T.FTHR, default_fthr,
-                         description=f'''
+            add_constant(
+                s,
+                T.FTHR,
+                default_fthr,
+                description='''
 Heart rate (in bpm) at functional threshold.
 
 Your FTHR is the highest sustained heart rate you can maintain for long periods (an hour).
 It is used to calculate how hard you are working (the Impulse) and, from that, 
 your FF-model parameters (fitness and fatigue).
 ''',
-                         activity_group=activity_group, units=U.BPM,
-                         statistic_journal_type=StatisticJournalType.INTEGER)
+                activity_group=activity_group,
+                units=U.BPM,
+                statistic_journal_type=StatisticJournalType.INTEGER,
+            )
+
         add_climb(s)  # default climb calculator
         add_responses(s, self._ff_parameters(), prefix=N.DEFAULT)
 

@@ -74,7 +74,7 @@ def summarize(format, data, all_fields=False, all_messages=False, internal=False
                          warn=warn, no_validate=no_validate, max_delta_t=max_delta_t, profile_path=profile_path,
                          output=output)
     else:
-        raise Exception('Bad format: %s' % format)
+        raise Exception(f'Bad format: {format}')
 
 
 def summarize_tokens(data, after_bytes=None, limit_bytes=-1, after_records=None, limit_records=-1,
@@ -102,7 +102,7 @@ def summarize_fields(data, after_bytes=None, limit_bytes=-1, after_records=None,
     for index, offset, token in tokens:
         print('%03d %05d %s' % (index, offset, token), file=output)
         for line in token.describe_fields(types):
-            print('  %s' % line, file=output)
+            print(f'  {line}', file=output)
 
 
 def summarize_records(data, all_fields=False, all_messages=False, internal=False,
@@ -138,7 +138,7 @@ def summarize_tables(data, all_fields=False, all_messages=False, internal=False,
                          warn=warn, no_validate=no_validate, internal=internal,
                          profile_path=profile_path, max_delta_t=max_delta_t, pipeline=[merge_duplicates])
 
-    records = list(record[2] for record in records)
+    records = [record[2] for record in records]
     counts = Counter(record.identity for record in records)
     small, large = partition(records, counts)
     width = width or terminal_width()
@@ -161,8 +161,7 @@ class Matcher:
             self.record = compile(record).match
         else:
             self.record = None
-        match = CMP.match(pattern)
-        if match:
+        if match := CMP.match(pattern):
             self.field = compile(match.group(1)).match
             if match.group(2) == '~':
                 self.value = compile(match.group(2)).match
@@ -173,7 +172,7 @@ class Matcher:
                         log.debug('Matching %f as a float' % value)
                     except ValueError:
                         value = match.group(3)
-                        log.debug('Matching %s as a string' % value)
+                        log.debug(f'Matching {value} as a string')
                     self.value = {'=': self.__build_compare(eq, value),
                                   '<': self.__build_compare(lt, value),
                                   '>': self.__build_compare(gt, value)}[match.group(2)]
@@ -223,40 +222,45 @@ def summarize_grep(data, grep, name_file=None, match=1, compact=False, context=F
             if (first_record is None and (after_records is not None and index >= after_records)) or \
                     (first_bytes is None and (after_bytes is not None and offset >= after_bytes)):
                 first_record, first_bytes = index, offset
-            if first_record is not None or first_bytes is not None:
-                if (first_record is not None and (limit_records < 0 or index - first_record < limit_records)) and \
-                        (first_bytes is not None and (limit_bytes < 0 or offset - first_bytes < limit_bytes)):
-                    record = record.as_dict(fix_degrees, merge_duplicates)
-                    for name, values_units in sorted(record.data.items()):
-                        if values_units and values_units[0]:
-                            for value in values_units[0]:
-                                for matcher in matchers:
-                                    if matcher.match(record.name, name, value):
-                                        matched_matchers.add(matcher)
-                                        if (name, value) not in matched_names_values:
-                                            display += '%s:%s=%s\n' % (record.name, name, value)
-                                            matched_names_values.add((name, value))
-                    if len(matched_matchers) == len(matchers):
-                        total_matches += 1
-                        if match:
-                            if first:
-                                if context or not compact:
-                                    print(file=output)
-                                first = False
-                            if context:
-                                pprint_as_dicts([(index, offset, record)], True, True,
-                                                width=width, output=output)
-                            else:
-                                print(display, file=output, end='' if compact else '\n')
-                        if match > -1 and total_matches > max(1, match):
-                            raise Done()
-                else:
+            if first_record is not None:
+                if (
+                    limit_records >= 0
+                    and index - first_record >= limit_records
+                    or first_bytes is None
+                    or limit_bytes >= 0
+                    and offset - first_bytes >= limit_bytes
+                ):
                     raise Done()
+                record = record.as_dict(fix_degrees, merge_duplicates)
+                for name, values_units in sorted(record.data.items()):
+                    if values_units and values_units[0]:
+                        for value in values_units[0]:
+                            for matcher in matchers:
+                                if matcher.match(record.name, name, value):
+                                    matched_matchers.add(matcher)
+                                    if (name, value) not in matched_names_values:
+                                        display += '%s:%s=%s\n' % (record.name, name, value)
+                                        matched_names_values.add((name, value))
+                if len(matched_matchers) == len(matchers):
+                    total_matches += 1
+                    if match:
+                        if first:
+                            if context or not compact:
+                                print(file=output)
+                            first = False
+                        if context:
+                            pprint_as_dicts([(index, offset, record)], True, True,
+                                            width=width, output=output)
+                        else:
+                            print(display, file=output, end='' if compact else '\n')
+                    if match > -1 and total_matches > max(1, match):
+                        raise Done()
+            elif first_bytes is not None:
+                raise Done()
     except Done:
         pass
-    if name_file:
-        if not total_matches == invert:
-            print(name_file, file=output)
+    if name_file and total_matches != invert:
+        print(name_file, file=output)
 
 
 def summarize_csv(data, after_bytes=0, limit_bytes=-1, after_records=0, limit_records=-1, internal=False,
@@ -269,10 +273,15 @@ def summarize_csv(data, after_bytes=0, limit_bytes=-1, after_records=0, limit_re
                         warn=warn, no_validate=no_header, max_delta_t=max_delta_t, profile_path=profile_path)
     for index, offset, token in tokens:
         if hasattr(token, 'describe_csv'):
-            values = ','.join(str(component)
-                              for component in token.describe_csv(warn=warn, internal=internal,
-                                                                  record_names=record_names, field_names=field_names))
-            if values:
+            if values := ','.join(
+                str(component)
+                for component in token.describe_csv(
+                    warn=warn,
+                    internal=internal,
+                    record_names=record_names,
+                    field_names=field_names,
+                )
+            ):
                 print(values, file=output)
 
 
@@ -298,8 +307,15 @@ def pprint_as_dicts(records, all_fields, all_messages, width=80, output=stdout, 
                 print('%03d %05d %s' % (index, offset, record.identity), file=output)
             else:
                 print(record.name, file=output)
-            pprint_with_tabs(('%s: %s' % (name, value) for name, value in sorted(record.data.items())),
-                             width=width, output=output)
+            pprint_with_tabs(
+                (
+                    f'{name}: {value}'
+                    for name, value in sorted(record.data.items())
+                ),
+                width=width,
+                output=output,
+            )
+
             print(file=output)
 
 

@@ -272,9 +272,8 @@ def titles_for_names(title_pattern, names):
     name_left, name_right = simple_name(title_pattern).split('%')
     pattern = re.compile(f'{name_left}(.+){name_right}')
     for name in names:
-        match = pattern.match(name)
-        if match:
-            yield title_left + match.group(1) + title_right
+        if match := pattern.match(name):
+            yield title_left + match[1] + title_right
 
 
 class NamesMeta(type):
@@ -310,5 +309,5 @@ def simple_name(name, none=True, strip=True):
     name = sub(r'\s+', SPACE, name)
     name = sub(r'[^a-z0-9%?:]', SPACE, name)
     name = sub(r'^(\d)', SPACE + r'\1', name)
-    name = sub(SPACE + '+', SPACE, name)
+    name = sub(f'{SPACE}+', SPACE, name)
     return name
